@@ -1,0 +1,7 @@
+# Ne pas versionner caches / checkpoints locaux
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+*.egg-info/
+.eggs/

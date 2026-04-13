@@ -1,0 +1,24 @@
+{
+  "task": "clustering",
+  "model_primary": "KMeans",
+  "model_secondary": "AgglomerativeClustering_ward",
+  "k": 3,
+  "silhouette": 0.15084658039644186,
+  "silhouette_train": 0.1555073405798967,
+  "silhouette_holdout": 0.15084658039644186,
+  "silhouette_kmeans_full": 0.15711145953279274,
+  "silhouette_agg_full": 0.108250307498888,
+  "davies_bouldin_kmeans": 1.8233558099021157,
+  "davies_bouldin_agg": 2.1895427944276884,
+  "n_samples": 3382,
+  "n_train": 2705,
+  "n_holdout": 677,
+  "kpi_alignment": "diversite_offre_segments_critere_E",
+  "cluster_segment_labels_file": "clustering_segment_labels.json",
+  "cluster_feature_names_file": "clustering_feature_names.json",
+  "cluster_share_train_sample": {
+    "0": 0.02365464222353637,
+    "1": 0.460969840331165,
+    "2": 0.5153755174452986
+  }
+}

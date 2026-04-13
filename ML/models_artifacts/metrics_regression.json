@@ -1,0 +1,53 @@
+{
+  "task": "regression",
+  "criterion": "D",
+  "champion_model": "Ridge",
+  "target": "final_price",
+  "kpi_alignment": "panier_moyen_ca_sum_final_price",
+  "features": [
+    "id_date",
+    "id_event",
+    "id_servicecategory",
+    "id_benchmark",
+    "id_provider",
+    "service_price",
+    "benchmark_avg_price",
+    "event_budget",
+    "cal_month",
+    "cal_year",
+    "quarter",
+    "commission_margin"
+  ],
+  "cv_ridge": {
+    "model": "Ridge",
+    "cv_rmse_mean": 2.0151551596729758,
+    "cv_rmse_std": 0.5911394276460822,
+    "cv_r2_mean": 0.9999999837267977,
+    "cv_mae_mean": 0.8735065911183801
+  },
+  "cv_random_forest": {
+    "model": "RandomForest",
+    "cv_rmse_mean": 842.8229287853898,
+    "cv_rmse_std": 608.8250143257237,
+    "cv_r2_mean": 0.9972010627831338,
+    "cv_mae_mean": 128.6542265279889
+  },
+  "test_ridge": {
+    "mse": 2.590093493518385,
+    "rmse": 1.6093767407037995,
+    "mae": 0.7077297608776619,
+    "r2": 0.9999999897610506
+  },
+  "test_random_forest": {
+    "mse": 242238.000446797,
+    "rmse": 492.1767979565849,
+    "mae": 95.38928216838761,
+    "r2": 0.9990424042109068
+  },
+  "test_champion": {
+    "mse": 2.590093493518385,
+    "rmse": 1.6093767407037995,
+    "mae": 0.7077297608776619,
+    "r2": 0.9999999897610506
+  }
+}

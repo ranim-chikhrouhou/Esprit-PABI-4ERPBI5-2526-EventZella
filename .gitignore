@@ -1,0 +1,23 @@
+# Environnements & secrets
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+.venv/
+venv/
+.env
+.env.*
+*.tmp
+~$*
+
+# IDE.idea/
+.vscode/
+*.egg-info/
+.eggs/
+
+# ML — sorties lourdes / régénérables (voir LISEZMOI_gitMachine.md)
+ML/processed/*.npy
+ML/processed/*.parquet
+ML/processed/*.csv
+ML/processed/*.png
+ML/models_artifacts/*.joblib

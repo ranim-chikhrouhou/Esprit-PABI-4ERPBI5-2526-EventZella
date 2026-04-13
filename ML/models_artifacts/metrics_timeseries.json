@@ -1,0 +1,29 @@
+{
+  "task": "time_series",
+  "criterion": "F",
+  "series": "nb_fact_rows",
+  "champion_model": "Holt_ExponentialSmoothing",
+  "champion_rule": "RMSE minimal sur le holdout; si egalite des RMSE, Holt est choisi si rmse_holt <= rmse_arima",
+  "target_column_explained": "Volume mensuel d'activit\u00e9 (nombre de lignes de faits compt\u00e9es dans le DW par mois).",
+  "rmse_delta_holt_minus_arima": -0.60296772,
+  "adf_pvalue": 0.0002496300832538065,
+  "kpss_pvalue": 0.1,
+  "decomposition_period_used": 12,
+  "test_holt": {
+    "rmse": 38.04731940320474,
+    "mae": 34.549318718502946,
+    "mape": 6.124521012382581
+  },
+  "test_arima": {
+    "rmse": 38.65028712749131,
+    "mae": 34.29316623613181,
+    "mape": 6.144083281318748
+  },
+  "test_champion": {
+    "rmse": 38.04731940320474,
+    "mae": 34.549318718502946,
+    "mape": 6.124521012382581
+  },
+  "horizon": 3,
+  "kpi_alignment": "count_id_reservation_mensuel_anticipation"
+}

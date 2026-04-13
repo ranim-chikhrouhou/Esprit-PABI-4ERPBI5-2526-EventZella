@@ -1,0 +1,10 @@
+{
+  "features": [
+    "nb_reservations_loyalty",
+    "ca_total_loyalty",
+    "panier_moyen_loyalty",
+    "recency_days_loyalty",
+    "avg_nb_visitors_loyalty",
+    "volume_reservations_site_loyalty"
+  ]
+}

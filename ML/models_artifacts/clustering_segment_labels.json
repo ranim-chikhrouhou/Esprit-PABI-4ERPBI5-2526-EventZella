@@ -1,0 +1,25 @@
+{
+  "k": 3,
+  "method": "facettes_metier_centres_standardises",
+  "description_fr": "Libellés à partir des centres K-Means : moyenne des z-scores par facette (montants, volumes, calendrier, IDs), priorité métier sur les clés techniques ; repli 2 axes si noms génériques dim_*.",
+  "segments": [
+    {
+      "cluster_id": 0,
+      "label_short": "Montants & prix au-dessus de la moyenne",
+      "label_long_plain": "Segment 0 — Montants & prix au-dessus de la moyenne",
+      "share_train_sample": 0.02365464222353637
+    },
+    {
+      "cluster_id": 1,
+      "label_short": "Saisonnalité marquée (mois / période) — Mix d’univers événements très étendu",
+      "label_long_plain": "Segment 1 — Saisonnalité marquée (mois / période) — Mix d’univers événements très étendu",
+      "share_train_sample": 0.460969840331165
+    },
+    {
+      "cluster_id": 2,
+      "label_short": "Saisonnalité marquée (mois / période) — Profil catalogue différenciant",
+      "label_long_plain": "Segment 2 — Saisonnalité marquée (mois / période) — Profil catalogue différenciant",
+      "share_train_sample": 0.5153755174452986
+    }
+  ]
+}
