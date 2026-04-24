@@ -1,6 +1,0 @@
-### Après exécution — lecture (PCA & heatmap)
-
-- **PCA 2D** : projection sur **2 axes** = partie seulement de la variance totale (la **variance expliquée** PC1–PC2 est affichée en console : ligne `[4] PCA — variance expliquée…`). Les **nuages colorés** permettent de **voir** la séparation des segments, pas de valider statistiquement une vérité terrain.
-- **Deux panneaux** : même projection, **étiquettes** K-Means vs agglomératif — les frontières peuvent différer même avec le même *k*.
-- **Heatmap des centres K-Means** : chaque **ligne** = profil moyen d’un segment (z-score). Couleurs **chaudes/froides** = au-dessus / en-dessous de la moyenne globale sur la variable.
-- **Conclusion** : vous reliez les segments à des **profils métier** (prix, volumes, etc.) et au **KPI diversité d’offre** (typologies distinctes).

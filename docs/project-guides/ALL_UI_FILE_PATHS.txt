@@ -1,0 +1,85 @@
+# ========================================
+# ALL UI FILE PATHS - EventZilla Project
+# ========================================
+
+# ========================================
+# 1. MAIN STREAMLIT APPLICATION
+# ========================================
+PI BI NEW (2)/PI BI NEW/ML/streamlit_app.py
+PI BI NEW (2)/PI BI NEW/ML/streamlit_app.py.french_backup
+PI BI NEW (2)/PI BI NEW/ML/auth_streamlit.py
+PI BI NEW (2)/PI BI NEW/.streamlit/config.toml
+
+# ========================================
+# 2. FASTAPI BACKEND
+# ========================================
+PI BI NEW (2)/PI BI NEW/ML/api/main.py
+PI BI NEW (2)/PI BI NEW/ML/api/auth_sql.py
+PI BI NEW (2)/PI BI NEW/ML/api/__init__.py
+PI BI NEW (2)/PI BI NEW/start_api.bat
+
+# ========================================
+# 3. N8N WORKFLOWS
+# ========================================
+PI BI NEW (2)/PI BI NEW/n8n/workflow_marketing.json
+PI BI NEW (2)/PI BI NEW/n8n/workflow_finance.json
+PI BI NEW (2)/PI BI NEW/n8n/workflow_crm.json
+PI BI NEW (2)/PI BI NEW/n8n/workflow_error_handler.json
+PI BI NEW (2)/PI BI NEW/n8n/test_workflows.py
+
+# ========================================
+# 4. HTML DASHBOARDS
+# ========================================
+PI BI NEW (2)/PI BI NEW/deliverables/EventZilla_Dashboards_KPIs_Objectifs.html
+PI BI NEW (2)/PI BI NEW/deliverables/EventZilla_Dashboards_Table2_DAX_Visuels_Detailles.html
+PI BI NEW (2)/PI BI NEW/deliverables/EventZilla_Dashboards_Table2_Avec_Formules_Sans_Predictif.html
+
+# ========================================
+# 5. POWER BI REPORTS
+# ========================================
+PABIRanimForNaima.pbix
+PI BI NEW (2)/PI BI NEW/gitMachine/Reports/PABIRanimForNaima.pbix
+
+# ========================================
+# 6. DASHBOARD MOCKUPS
+# ========================================
+PI BI NEW (2)/PI BI NEW/Mockups/dashboard_marketing (1).png
+PI BI NEW (2)/PI BI NEW/Mockups/dashboard_finance (1).png
+PI BI NEW (2)/PI BI NEW/Mockups/dashboard_client (1).png
+PI BI NEW (2)/PI BI NEW/DashboardsMockups/dashboard_marketing (1).png
+PI BI NEW (2)/PI BI NEW/DashboardsMockups/dashboard_finance (1).png
+PI BI NEW (2)/PI BI NEW/DashboardsMockups/dashboard_client (1).png
+
+# ========================================
+# 7. UI GENERATION SCRIPTS
+# ========================================
+PI BI NEW (2)/PI BI NEW/scripts/build_eventzilla_dashboards_html.py
+PI BI NEW (2)/PI BI NEW/scripts/build_dashboards_table2_with_formulas.py
+PI BI NEW (2)/PI BI NEW/scripts/build_dashboards_table2_dax_et_visuels.py
+
+# ========================================
+# 8. LAUNCH SCRIPTS
+# ========================================
+LANCER_PROJET.bat
+PI BI NEW (2)/PI BI NEW/start_api.bat
+
+# ========================================
+# 9. CONFIGURATION FILES
+# ========================================
+PI BI NEW (2)/PI BI NEW/.streamlit/config.toml
+PI BI NEW (2)/PI BI NEW/.streamlit.zip
+
+# ========================================
+# SUMMARY
+# ========================================
+# Total UI Files: 32
+# - Streamlit: 4 files
+# - FastAPI: 4 files
+# - n8n: 5 files
+# - HTML Dashboards: 3 files
+# - Power BI: 2 files
+# - Mockups: 6 files
+# - Scripts: 3 files
+# - Launch: 2 files
+# - Config: 2 files
+# - Backup: 1 file

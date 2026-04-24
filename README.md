@@ -16,13 +16,15 @@
 
 ## Arborescence du dépôt
 
-À la **racine** du projet, seuls `README.md` et `.gitignore` restent volontairement (convention Git). Tout le reste est regroupé par domaine :
+La racine regroupe encore quelques fichiers de lancement (Docker, scripts `.bat/.ps1`) ; les **guides longs** sont centralisés sous **`docs/project-guides/`**. Le reste est regroupé par domaine :
 
 | Dossier | Contenu |
 |---------|---------|
 | **`scripts/`** | Scripts Python et PowerShell de génération (`build_*.py`, `convert_*.ps1`). |
 | **`deliverables/`** | Sorties Markdown / HTML / PDF des tableaux de bord (fichiers générés ou exports). |
 | **`docs/`** | `DAX_Measures.md`, `Liste_Des_Kpis_Updated_English_DAX.md`, `eventzilla/` (source `EventZilla_Dashboards_KPIs_Objectifs.md`), `references/` (PDF optionnels). |
+| **`docs/project-guides/`** | Guides MLflow, n8n, déploiement, monitoring, UI — voir **`docs/project-guides/README.md`**. |
+| **`docs/team/`** | Notes d’organisation d’équipe (`ORGANISATION.md`). |
 | **`config/`** | `requirements.txt` pour les scripts Python. |
 | **`Reports/`** | Rapport Power BI (`.pbix`) — voir `Reports/README.md`. |
 | **`Database/`** | Emplacement alternatif / doc ; sauvegardes SQL principales : **`FilesMachine/DB/`** (`DW_Eventzilla`, `SA_eventzilla`). |
