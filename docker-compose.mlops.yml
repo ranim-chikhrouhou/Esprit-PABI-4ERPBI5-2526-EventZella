@@ -1,0 +1,32 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: eventzilla-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      EVENTZILLA_MLFLOW_TRACKING_URI: file:///app/mlruns
+      EVENTZILLA_MLFLOW_EXPERIMENT: EventZilla-S12
+    volumes:
+      - ./ML/models_artifacts:/app/ML/models_artifacts
+      - ./mlruns:/app/mlruns
+    restart: unless-stopped
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.14.3
+    container_name: eventzilla-mlflow
+    command: >
+      mlflow ui
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri file:///mlruns
+      --default-artifact-root file:///mlruns
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/mlruns
+    restart: unless-stopped
