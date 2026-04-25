@@ -70,6 +70,30 @@ Ordre conseillé des notebooks : **00_A** → **01_E** / **02_C** / **03_D** / *
 
 ---
 
+## Validation S12 (MLOps)
+
+La validation S12 (industrialisation ML) est documentée dans `docs/S12_VALIDATION_MLOPS.md`.
+
+Points couverts:
+- tracking d'expériences avec MLflow,
+- pipeline d'entraînement automatisé,
+- gestion/versioning des artefacts modèles,
+- serving FastAPI (`/predict`),
+- exécution Docker (`api` + `mlflow`),
+- test de bout en bout pour la démo.
+
+Raccourci démarrage démo:
+
+```text
+docker compose -f docker-compose.mlops.yml up -d
+```
+
+Puis ouvrir:
+- API: `http://127.0.0.1:8000/docs`
+- MLflow: `http://127.0.0.1:5000`
+
+---
+
 ## KPIs (aperçu)
 
 Plus de **50 indicateurs** : performance commerciale (conversion, AOV), analyse financière (revenu, commissions), fidélité (rétention, NPS), etc.
