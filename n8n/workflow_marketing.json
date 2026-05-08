@@ -1,0 +1,122 @@
+{
+  "name": "EventZilla — Marketing Pipeline (Ranim)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 24 }]
+        }
+      },
+      "id": "node-cron-marketing",
+      "name": "Déclencheur Quotidien 08h00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [200, 300],
+      "notes": "Déclenche le pipeline Marketing chaque jour à 8h00."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/auth/login",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"login\": \"ranim_chikhrouhou\",\n  \"password\": \"Ranim@Marketing2025!\"\n}",
+        "options": { "timeout": 10000 }
+      },
+      "id": "node-login-marketing",
+      "name": "Login API — Ranim (Marketing)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "notes": "Authentification via login SQL Server. Retourne un JWT token valable 8h."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/predict/segmentation/beneficiaire",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "Authorization", "value": "=Bearer {{ $('Login API — Ranim (Marketing)').item.json.access_token }}"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"nb_reservations_loyalty\": 12,\n  \"ca_total_loyalty\": 15000,\n  \"panier_moyen_loyalty\": 1250,\n  \"recency_days_loyalty\": 30,\n  \"avg_nb_visitors_loyalty\": 85,\n  \"volume_reservations_site_loyalty\": 5\n}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "node-segmentation-ben",
+      "name": "Segmentation Bénéficiaires",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 180],
+      "notes": "K-Means fidélité (critère E). Retourne segment_id + label métier."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/predict/classification",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "Authorization", "value": "=Bearer {{ $('Login API — Ranim (Marketing)').item.json.access_token }}"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"id_date\": 1,\n  \"id_event\": 42,\n  \"id_servicecategory\": 3,\n  \"id_benchmark\": 2,\n  \"id_provider\": 7,\n  \"final_price\": 1500,\n  \"service_price\": 1200,\n  \"benchmark_avg_price\": 1300,\n  \"event_budget\": 2000,\n  \"cal_month\": 4,\n  \"cal_year\": 2024,\n  \"quarter\": 2\n}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "node-classification-marketing",
+      "name": "Classification Statut Réservation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 420],
+      "notes": "Random Forest (critère C). Prédit statut: confirmed / cancelled / pending."
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst seg  = (items[0] || {}).json || {};\nconst clas = (items[1] || {}).json || {};\nreturn [{\n  json: {\n    timestamp:      new Date().toISOString(),\n    workflow:       'Marketing Pipeline',\n    utilisateur:    'Ranim Chikhrouhou',\n    segmentation: {\n      segment_id:    seg.segment_id,\n      segment_label: seg.segment_label,\n      modele:        seg.modele\n    },\n    classification: {\n      statut_predit: clas.statut_predit,\n      probabilites:  clas.probabilites,\n      modele:        clas.modele\n    }\n  }\n}];"
+      },
+      "id": "node-merge-marketing",
+      "name": "Fusionner Résultats",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [980, 300],
+      "notes": "Fusionne segmentation + classification en un seul objet JSON structuré."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/save_result",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "Authorization", "value": "=Bearer {{ $('Login API — Ranim (Marketing)').item.json.access_token }}"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"workflow\": \"marketing\",\n  \"data\": {{ JSON.stringify($json) }}\n}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "node-save-marketing",
+      "name": "Sauvegarder Résultats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1220, 300],
+      "notes": "POST /save_result → FastAPI écrit le fichier JSON dans n8n/results/."
+    }
+  ],
+  "connections": {
+    "Déclencheur Quotidien 08h00": {
+      "main": [[{ "node": "Login API — Ranim (Marketing)", "type": "main", "index": 0 }]]
+    },
+    "Login API — Ranim (Marketing)": {
+      "main": [[
+        { "node": "Segmentation Bénéficiaires",        "type": "main", "index": 0 },
+        { "node": "Classification Statut Réservation", "type": "main", "index": 0 }
+      ]]
+    },
+    "Segmentation Bénéficiaires":        { "main": [[{ "node": "Fusionner Résultats", "type": "main", "index": 0 }]] },
+    "Classification Statut Réservation": { "main": [[{ "node": "Fusionner Résultats", "type": "main", "index": 1 }]] },
+    "Fusionner Résultats": { "main": [[{ "node": "Sauvegarder Résultats", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "saveManualExecutions": true },
+  "tags": [{ "name": "EventZilla" }, { "name": "Marketing" }, { "name": "ML" }]
+}

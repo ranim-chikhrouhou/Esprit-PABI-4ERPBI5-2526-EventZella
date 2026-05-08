@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-04-16T23:51:31.971Z",
+  "workflow": "Marketing Pipeline",
+  "utilisateur": "Ranim Chikhrouhou",
+  "segmentation": {
+    "segment_id": 3,
+    "segment_label": "Forte fidélité (fréquence / CA / récence favorable) — Montants & prix au-dessus de la moyenne",
+    "modele": "K-Means fidélité (critère E)"
+  },
+  "classification": {}
+}

@@ -1,0 +1,14 @@
+{"timestamp": "2026-04-17T10:00:00Z", "workflow": "Marketing Pipeline", "node": "Login API - Ranim (Marketing)", "message": "Test alerte - connexion refusee (simulation)"}
+{"timestamp": "2026-04-17T18:47:23.275Z", "workflow": "Example Workflow", "node": "Node With Error", "message": "Example Error Message"}
+{"timestamp": "2026-04-17T18:48:28.258Z", "workflow": "Test Email depuis n8n", "node": "Simulation manuelle", "message": "Ceci est un test d'alerte email EventZilla"}
+{"timestamp": "2026-04-17T18:48:39.647Z", "workflow": "Test Email depuis n8n", "node": "Simulation manuelle", "message": "Ceci est un test d'alerte email EventZilla"}
+{"timestamp": "2026-04-17T18:52:13.691Z", "workflow": "Test Email depuis n8n", "node": "Simulation manuelle", "message": "Ceci est un test d'alerte email EventZilla"}
+{"timestamp": "2026-04-17T19:01:50.602Z", "workflow": "Example Workflow", "node": "Node With Error", "message": "Example Error Message"}
+{"timestamp": "2026-04-17T19:02:17.611Z", "workflow": "Test Email depuis n8n", "node": "Simulation manuelle", "message": "Ceci est un test d'alerte email EventZilla"}
+{"timestamp": "2026-04-17T19:02:33.166Z", "workflow": "Test Email depuis n8n", "node": "Simulation manuelle", "message": "Ceci est un test d'alerte email EventZilla"}
+{"timestamp": "2026-04-17T19:03:18.463Z", "workflow": "Test Email depuis n8n", "node": "Simulation manuelle", "message": "Ceci est un test d'alerte email EventZilla"}
+{"timestamp": "2026-04-17T19:04:06.012Z", "workflow": "Test Email depuis n8n", "node": "Simulation manuelle", "message": "Ceci est un test d'alerte email EventZilla"}
+{"timestamp": "2026-04-17T19:06:08.205Z", "workflow": "Test Email depuis n8n", "node": "Simulation manuelle", "message": "Ceci est un test d'alerte email EventZilla"}
+{"timestamp": "2026-04-19T19:54:24.455Z", "workflow": "Test Email depuis n8n", "node": "Simulation manuelle", "message": "Ceci est un test d'alerte email EventZilla"}
+{"timestamp": "2026-04-19T21:46:25.474Z", "workflow": "Test Email depuis n8n", "node": "Simulation manuelle", "message": "Ceci est un test d'alerte email EventZilla"}
+{"timestamp": "2026-04-20T09:02:59.858Z", "workflow": "Test Email depuis n8n", "node": "Simulation manuelle", "message": "Ceci est un test d'alerte email EventZilla"}

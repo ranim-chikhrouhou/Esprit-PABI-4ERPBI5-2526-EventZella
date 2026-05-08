@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-04-16T23:52:31.348Z",
+  "workflow": "CRM Pipeline",
+  "utilisateur": "Anas Allam",
+  "classification": {
+    "statut_predit": "confirmed",
+    "probabilites": {
+      "cancelled": 0.275,
+      "confirmed": 0.4,
+      "pending": 0.325
+    },
+    "alerte": "RAS"
+  },
+  "segmentation": {},
+  "action_recommandee": "Suivi standard"
+}

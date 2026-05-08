@@ -1,0 +1,119 @@
+{
+  "name": "EventZilla — Finance Pipeline (Naïma)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "weeks", "weeksInterval": 1 }]
+        }
+      },
+      "id": "node-cron-finance",
+      "name": "Déclencheur Hebdo Lundi 07h00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [200, 300],
+      "notes": "Déclenche le pipeline Finance chaque lundi à 7h00."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/auth/login",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"login\": \"naima_sarraj\",\n  \"password\": \"Naima@Finance2025!\"\n}",
+        "options": { "timeout": 10000 }
+      },
+      "id": "node-login-finance",
+      "name": "Login API — Naïma (Finance)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "notes": "Authentification Naïma Sarraj — rôle financial_manager."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/predict/regression",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "Authorization", "value": "=Bearer {{ $('Login API — Naïma (Finance)').item.json.access_token }}"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"id_date\": 1,\n  \"id_event\": 42,\n  \"id_servicecategory\": 3,\n  \"id_benchmark\": 2,\n  \"id_provider\": 7,\n  \"service_price\": 1200,\n  \"benchmark_avg_price\": 1300,\n  \"event_budget\": 2000,\n  \"cal_month\": 4,\n  \"cal_year\": 2024,\n  \"quarter\": 2,\n  \"commission_margin\": 150\n}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "node-regression-finance",
+      "name": "Prédiction Montant Final (Ridge)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 180],
+      "notes": "Ridge champion (R²≈1.0, critère D). Prédit final_price en TND."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://127.0.0.1:8000/predict/timeseries?horizon=3",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "Authorization", "value": "=Bearer {{ $('Login API — Naïma (Finance)').item.json.access_token }}"}]
+        },
+        "options": { "timeout": 15000 }
+      },
+      "id": "node-timeseries-finance",
+      "name": "Prévision CA Mensuel (Holt)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 420],
+      "notes": "Holt champion (MAPE≈6.1%, critère F). Retourne métriques + prévision 3 mois."
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst reg = (items[0] || {}).json || {};\nconst ts  = (items[1] || {}).json || {};\nreturn [{\n  json: {\n    timestamp:   new Date().toISOString(),\n    workflow:    'Finance Pipeline',\n    utilisateur: 'Naïma Sarraj',\n    regression: {\n      montant_predit: reg.montant_predit,\n      unite:          reg.unite,\n      modele:         reg.modele\n    },\n    timeseries: {\n      modele_champion: ts.modele_champion,\n      horizon_mois:    ts.horizon_mois,\n      metriques_test:  ts.metriques_test,\n      note:            ts.note\n    }\n  }\n}];"
+      },
+      "id": "node-merge-finance",
+      "name": "Fusionner Résultats Finance",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [980, 300],
+      "notes": "Rapport financier consolidé régression + séries temporelles."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/save_result",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "Authorization", "value": "=Bearer {{ $('Login API — Naïma (Finance)').item.json.access_token }}"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"workflow\": \"finance\",\n  \"data\": {{ JSON.stringify($json) }}\n}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "node-save-finance",
+      "name": "Sauvegarder Résultats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1220, 300],
+      "notes": "POST /save_result → FastAPI écrit le fichier JSON dans n8n/results/."
+    }
+  ],
+  "connections": {
+    "Déclencheur Hebdo Lundi 07h00": {
+      "main": [[{ "node": "Login API — Naïma (Finance)", "type": "main", "index": 0 }]]
+    },
+    "Login API — Naïma (Finance)": {
+      "main": [[
+        { "node": "Prédiction Montant Final (Ridge)", "type": "main", "index": 0 },
+        { "node": "Prévision CA Mensuel (Holt)",      "type": "main", "index": 0 }
+      ]]
+    },
+    "Prédiction Montant Final (Ridge)": { "main": [[{ "node": "Fusionner Résultats Finance", "type": "main", "index": 0 }]] },
+    "Prévision CA Mensuel (Holt)":      { "main": [[{ "node": "Fusionner Résultats Finance", "type": "main", "index": 1 }]] },
+    "Fusionner Résultats Finance": { "main": [[{ "node": "Sauvegarder Résultats", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "saveManualExecutions": true },
+  "tags": [{ "name": "EventZilla" }, { "name": "Finance" }, { "name": "ML" }]
+}

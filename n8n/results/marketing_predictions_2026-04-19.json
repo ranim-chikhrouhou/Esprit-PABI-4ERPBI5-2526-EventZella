@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-04-19T21:41:42.164Z",
+  "workflow": "Marketing Pipeline",
+  "utilisateur": "Ranim Chikhrouhou",
+  "segmentation": {
+    "segment_id": 3,
+    "segment_label": "À risque / inactif",
+    "modele": "K-Means fidélité (critère E)"
+  },
+  "classification": {}
+}

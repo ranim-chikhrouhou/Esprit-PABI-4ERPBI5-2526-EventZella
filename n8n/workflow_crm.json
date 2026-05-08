@@ -1,0 +1,129 @@
+{
+  "name": "EventZilla — CRM Pipeline (Anas)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "eventzilla-crm-trigger",
+        "options": {}
+      },
+      "id": "node-webhook-crm",
+      "name": "Webhook — Événement CRM",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "eventzilla-crm-webhook",
+      "notes": "Déclenché par événement externe. URL: http://localhost:5678/webhook/eventzilla-crm-trigger"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/auth/login",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"login\": \"anas_allam\",\n  \"password\": \"Anas@CRM2025!\"\n}",
+        "options": { "timeout": 10000 }
+      },
+      "id": "node-login-crm",
+      "name": "Login API — Anas (CRM)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "notes": "Authentification Anas Allam — rôle crm_manager."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/predict/classification",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{
+            "name": "Authorization",
+            "value": "=Bearer {{ $('Login API — Anas (CRM)').item.json.access_token }}"
+          }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"id_date\": 1,\n  \"id_event\": 42,\n  \"id_servicecategory\": 3,\n  \"id_benchmark\": 2,\n  \"id_provider\": 7,\n  \"final_price\": 800,\n  \"service_price\": 700,\n  \"benchmark_avg_price\": 900,\n  \"event_budget\": 1000,\n  \"cal_month\": 4,\n  \"cal_year\": 2024,\n  \"quarter\": 2\n}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "node-classification-crm",
+      "name": "Anticipation Annulation (RF)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 180],
+      "notes": "Prédit si la réservation sera confirmed/cancelled/pending."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/predict/segmentation/beneficiaire",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{
+            "name": "Authorization",
+            "value": "=Bearer {{ $('Login API — Anas (CRM)').item.json.access_token }}"
+          }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"nb_reservations_loyalty\": 5,\n  \"ca_total_loyalty\": 6000,\n  \"panier_moyen_loyalty\": 1200,\n  \"recency_days_loyalty\": 45,\n  \"avg_nb_visitors_loyalty\": 60,\n  \"volume_reservations_site_loyalty\": 3\n}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "node-segmentation-crm",
+      "name": "Segment Fidélité Client",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 420],
+      "notes": "Identifie le segment de fidélité du client (VIP, Standard, Faible activité)."
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst clas = (items[0] || {}).json || {};\nconst seg  = (items[1] || {}).json || {};\nconst statut = clas.statut_predit || 'inconnu';\nreturn [{\n  json: {\n    timestamp:   new Date().toISOString(),\n    workflow:    'CRM Pipeline',\n    utilisateur: 'Anas Allam',\n    classification: {\n      statut_predit: statut,\n      probabilites:  clas.probabilites,\n      alerte:        statut === 'cancelled' ? 'ALERTE : Risque annulation élevé' : 'RAS'\n    },\n    segmentation: {\n      segment_id:    seg.segment_id,\n      segment_label: seg.segment_label\n    },\n    action_recommandee: statut === 'cancelled'\n      ? 'Contacter le client en priorité'\n      : 'Suivi standard'\n  }\n}];"
+      },
+      "id": "node-merge-crm",
+      "name": "Analyse CRM + Action Recommandée",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [980, 300],
+      "notes": "Génère une action recommandée selon le statut prédit."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/save_result",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "Authorization", "value": "=Bearer {{ $('Login API — Anas (CRM)').item.json.access_token }}"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"workflow\": \"crm\",\n  \"data\": {{ JSON.stringify($json) }}\n}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "node-save-crm",
+      "name": "Sauvegarder Résultats CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1220, 300],
+      "notes": "POST /save_result → FastAPI écrit le fichier JSON dans n8n/results/."
+    }
+  ],
+  "connections": {
+    "Webhook — Événement CRM": {
+      "main": [[{ "node": "Login API — Anas (CRM)", "type": "main", "index": 0 }]]
+    },
+    "Login API — Anas (CRM)": {
+      "main": [[
+        { "node": "Anticipation Annulation (RF)", "type": "main", "index": 0 },
+        { "node": "Segment Fidélité Client",      "type": "main", "index": 0 }
+      ]]
+    },
+    "Anticipation Annulation (RF)": { "main": [[{ "node": "Analyse CRM + Action Recommandée", "type": "main", "index": 0 }]] },
+    "Segment Fidélité Client":      { "main": [[{ "node": "Analyse CRM + Action Recommandée", "type": "main", "index": 1 }]] },
+    "Analyse CRM + Action Recommandée": { "main": [[{ "node": "Sauvegarder Résultats CRM", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "saveManualExecutions": true },
+  "tags": [{ "name": "EventZilla" }, { "name": "CRM" }, { "name": "ML" }]
+}
