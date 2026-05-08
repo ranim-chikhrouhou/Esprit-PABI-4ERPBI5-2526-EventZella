@@ -1,0 +1,291 @@
+@startuml Diagramme_BI_EventZella_3Niveaux
+
+!define FACT_COLOR #FFD700
+!define DIM_DATE_COLOR #87CEEB
+!define DIM_COLOR #98FB98
+
+skinparam entity {
+  BackgroundColor<<fact>> FACT_COLOR
+  BackgroundColor<<dimdate>> DIM_DATE_COLOR
+  BackgroundColor<<dim>> DIM_COLOR
+  BorderColor #333333
+  FontSize 10
+}
+
+skinparam package {
+  BackgroundColor #F5F5F5
+  BorderColor #888888
+  FontSize 12
+  FontStyle bold
+}
+
+skinparam linetype ortho
+skinparam ranksep 80
+skinparam nodesep 25
+skinparam maxMessageSize 50
+skinparam wrapWidth 180
+skinparam defaultFontSize 9
+skinparam legend {
+  FontSize 8
+  MaxWidth 200
+}
+
+title Diagramme BI EventZella - Modèle Étoile 3 Niveaux\n(Mesures brutes uniquement - KPIs calculés en BI)
+
+' ═══════════════════════════════════════════════════════════════════
+' NIVEAU 1 : DIMENSION TEMPORELLE (DimDate fusionnée avec Holiday)
+' ═══════════════════════════════════════════════════════════════════
+
+package "N1: Dimension Temporelle" as N1 {
+
+  entity "DimDate" as dimdate <<dimdate>> {
+    * id_date : int <<PK>>
+    --
+    full_date : date
+    day : int
+    month : int
+    year : int
+    quarter : int
+    day_of_week : varchar
+    is_weekend : boolean
+    ..Attributs Holiday fusionnés (external_holidays.csv)..
+    is_holiday : boolean
+    holiday_name : varchar
+    holiday_local_name : varchar
+    holiday_type : varchar
+    is_national : boolean
+  }
+
+}
+
+' ═══════════════════════════════════════════════════════════════════
+' NIVEAU 2 : TABLES DE FAITS (Mesures brutes uniquement - Pas de KPIs calculés)
+' ═══════════════════════════════════════════════════════════════════
+
+package "N2: Tables de Faits" as N2 {
+
+  entity "Fact_CustomerSatisfaction" as fact_sat <<fact>> {
+    * fact_satisfaction_id : int <<PK>>
+    --
+    id_date : int <<FK>>
+    id_reservation : int <<FK>>
+    id_provider : int <<FK>>
+    id_feedback : int <<FK>>
+    id_complaint : int <<FK>>
+    ==Mesures brutes==
+    rating : int
+    final_price : float
+    ..ETL: rating←DimFeedback, final_price←DimReservation..
+  }
+
+  entity "Fact_CommercialPerformance" as fact_perf <<fact>> {
+    * fact_marketing_id : int <<PK>>
+    --
+    id_date : int <<FK>>
+    id_event : int <<FK>>
+    id_reservation : int <<FK>>
+    id_beneficiary : int <<FK>>
+    id_servicecategory : int <<FK>>
+    id_provider : int <<FK>>
+    id_visitors : int <<FK>>
+    ==Mesures brutes==
+    nb_visitors : int
+    nb_reservations_site : int
+    final_price : float
+    event_budget : float
+    service_price : float
+    ..ETL: nb_visitors←DimVisitors, final_price←DimReservation..
+    .. event_budget←DimEvent, service_price←DimServiceCategory..
+  }
+
+  entity "Fact_FinancialProfitability" as fact_fin <<fact>> {
+    * fact_finance_id : int <<PK>>
+    --
+    id_date : int <<FK>>
+    id_event : int <<FK>>
+    id_reservation : int <<FK>>
+    id_servicecategory : int <<FK>>
+    id_benchmark : int <<FK>>
+    id_provider : int <<FK>>
+    ==Mesures brutes==
+    final_price : float
+    service_price : float
+    benchmark_avg_price : float
+    event_budget : float
+    ..ETL: final_price←DimReservation, service_price←DimServiceCategory..
+    .. benchmark_avg_price←DimBenchmarkPrice, event_budget←DimEvent..
+  }
+
+}
+
+' ═══════════════════════════════════════════════════════════════════
+' ESPACEMENT entre Niveau 2 et Niveau 3
+' ═══════════════════════════════════════════════════════════════════
+
+N2 -[hidden]down- N3
+
+' ═══════════════════════════════════════════════════════════════════
+' NIVEAU 3 : DIMENSIONS ANALYTIQUES
+' ═══════════════════════════════════════════════════════════════════
+
+package "N3: Dimensions Analytiques" as N3 {
+
+  entity "DimFeedback" as dimfeed <<dim>> {
+    * id_feedback : int <<PK>>
+    --
+    comment : varchar
+    ..rating→Fact_Sat.rating..
+  }
+
+  entity "DimComplaint" as dimcomp <<dim>> {
+    * id_complaint : int <<PK>>
+    --
+    subject : varchar
+    description : varchar
+    status : varchar
+    ..Pas de mesure numerique directe ..
+    .. → utilisee via COUNT/agregation dans les KPIs calcules ..
+  }
+
+  entity "DimProvider" as dimprov <<dim>> {
+    * id_provider : int <<PK>>
+    --
+    provider_name : varchar
+    service_type : varchar
+    email : varchar
+    phone : varchar
+    city : varchar
+    ..Pas de mesure numerique directe ..
+    .. → utilisee pour filtrage/groupement dans les KPIs ..
+  }
+
+  entity "DimVisitors" as dimvisitors <<dim>> {
+    * id_visitors : int <<PK>>
+    --
+    date_visite : date
+    ..nb_visitors, nb_reservations_site→Fact_Perf..
+  }
+
+  entity "DimEvent" as dimevent <<dim>> {
+    * id_event : int <<PK>>
+    --
+    title : varchar
+    event_type : varchar
+    event_date : date
+    ..budget→Fact_Perf.event_budget, Fact_Fin.event_budget..
+  }
+
+  entity "DimReservation" as dimres <<dim>> {
+    * id_reservation : int <<PK>>
+    --
+    reservation_date : date
+    status : varchar
+    ..final_price→Fact_Sat, Fact_Perf, Fact_Fin..
+  }
+
+  entity "DimBeneficiary" as dimben <<dim>> {
+    * id_beneficiary : int <<PK>>
+    --
+    first_name : varchar
+    last_name : varchar
+    email : varchar
+    phone : varchar
+    ..Pas de mesure numerique directe ..
+    .. → utilisee pour filtrage/groupement dans les KPIs ..
+  }
+
+  entity "DimServiceCategory" as dimserv <<dim>> {
+    * id_servicecategory : int <<PK>>
+    --
+    service_title : varchar
+    subcategory_name : varchar
+    category_name : varchar
+    ..price→Fact_Perf.service_price, Fact_Fin.service_price..
+  }
+
+  entity "DimBenchmarkPrice" as dimbench <<dim>> {
+    * id_benchmark : int <<PK>>
+    --
+    subcategory : varchar
+    saisonnalite : varchar
+    periode : varchar
+    ..avg_price→Fact_Fin.benchmark_avg_price..
+  }
+
+}
+
+' ═══════════════════════════════════════════════════════════════════
+' RELATIONS : Niveau 1 (DimDate) → Niveau 2 (Facts)
+' ═══════════════════════════════════════════════════════════════════
+
+dimdate ||--o{ fact_sat : "id_date"
+dimdate ||--o{ fact_perf : "id_date"
+dimdate ||--o{ fact_fin : "id_date"
+
+' ═══════════════════════════════════════════════════════════════════
+' RELATIONS : Niveau 2 (Facts) → Niveau 3 (Dimensions)
+' ═══════════════════════════════════════════════════════════════════
+
+' -- Fact_CustomerSatisfaction --
+fact_sat }o--|| dimfeed : "id_feedback"
+fact_sat }o--|| dimcomp : "id_complaint"
+fact_sat }o--|| dimprov : "id_provider"
+fact_sat }o--|| dimres : "id_reservation"
+
+' -- Fact_CommercialPerformance --
+fact_perf }o--|| dimevent : "id_event"
+fact_perf }o--|| dimres : "id_reservation"
+fact_perf }o--|| dimben : "id_beneficiary"
+fact_perf }o--|| dimserv : "id_servicecategory"
+fact_perf }o--|| dimprov : "id_provider"
+fact_perf }o--|| dimvisitors : "id_visitors"
+
+' -- Fact_FinancialProfitability --
+fact_fin }o--|| dimevent : "id_event"
+fact_fin }o--|| dimres : "id_reservation"
+fact_fin }o--|| dimserv : "id_servicecategory"
+fact_fin }o--|| dimbench : "id_benchmark"
+fact_fin }o--|| dimprov : "id_provider"
+
+' ═══════════════════════════════════════════════════════════════════
+' LÉGENDE ET TRAÇABILITÉ MESURES
+' ═══════════════════════════════════════════════════════════════════
+
+legend right
+  |= Couleur |= Type |
+  |<#87CEEB>| Dim Temporelle (N1) |
+  |<#FFD700>| Tables de Faits (N2) |
+  |<#98FB98>| Dim Analytiques (N3) |
+  --
+  **Principe :**
+  Faits = mesures brutes uniquement
+  Dims = attributs descriptifs uniquement
+  KPIs = calculés en BI (pas dans DW)
+  --
+  **Mesures brutes :**
+  |= Fact |= Mesures |= Source |
+  | Fact_Sat | rating, final_price | EVAL, RESERV |
+  | Fact_Perf | nb_visitors, nb_reserv_site | VISITORS |
+  | Fact_Perf | final_price, event_budget | RESERV, EVENT |
+  | Fact_Perf | service_price | SERVICE |
+  | Fact_Fin | final_price, service_price | RESERV, SERVICE |
+  | Fact_Fin | benchmark_avg_price | benchmark CSV |
+  | Fact_Fin | event_budget | EVENT |
+  --
+  **KPIs exemples (calculés BI) :**
+  Taux conversion, Panier moyen, CA total
+  Note moyenne, Taux résolution
+  Part sous/aligné/dessus marché
+  Impact CA feries, Taux commission
+  --
+  **Sources données :**
+  DimDate ← Dates + external_holidays.csv
+  DimFeedback ← EVALUATION.csv (rating→Fact_Sat)
+  DimVisitors ← VISITORS.csv (nb_visitors→Fact_Perf)
+  DimEvent ← EVENT.csv (budget→Fact_Perf,Fact_Fin)
+  DimReservation ← RESERVATION.csv (final_price→tous)
+  DimServiceCategory ← SERVICE+SUBCAT+CAT (price→Fact_Perf,Fact_Fin)
+  DimBenchmarkPrice ← benchmark CSV (avg_price→Fact_Fin)
+endlegend
+
+@enduml

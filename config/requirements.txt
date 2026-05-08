@@ -1,0 +1,3 @@
+# Scripts de génération (build_dashboards_*.py) : bibliothèque standard uniquement.
+# Python recommandé : 3.10+
+# Aucun paquet pip obligatoire pour ces scripts.

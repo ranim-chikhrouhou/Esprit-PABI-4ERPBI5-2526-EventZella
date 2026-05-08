@@ -1,0 +1,169 @@
+// ============================================================
+// EventZilla Data Warehouse — 3-Level Star Model (DBML)
+// Aligned with Diagramme_BI_EventZella_3Niveaux (PlantUML)
+// Use at: https://dbdiagram.io/d — Import → DBML → paste
+// ============================================================
+// Principle: Raw measures only in facts; KPIs calculated in BI.
+// N1 = Time dimension | N2 = Fact tables | N3 = Analytical dimensions
+// ============================================================
+
+Project EventZilla_BI {
+  database_type: 'Data Warehouse'
+  Note: '3-level star model. Facts = raw measures. KPIs calculated in BI layer.'
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LEVEL 1: TIME DIMENSION (DimDate + Holiday merged)
+// ═══════════════════════════════════════════════════════════════
+
+Table DimDate {
+  id_date int [pk, note: 'PK']
+  full_date date
+  day int
+  month int
+  year int
+  quarter int
+  day_of_week varchar
+  is_weekend boolean
+  is_holiday boolean [note: 'external_holidays.csv']
+  holiday_name varchar
+  holiday_local_name varchar
+  holiday_type varchar
+  is_national boolean
+  
+  Note: 'N1 — Time dimension. Holiday attributes merged (external_holidays.csv).'
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LEVEL 2: FACT TABLES (raw measures only)
+// ═══════════════════════════════════════════════════════════════
+
+Table Fact_CustomerSatisfaction {
+  fact_satisfaction_id int [pk]
+  id_date int [not null, ref: > DimDate.id_date]
+  id_reservation int [ref: > DimReservation.id_reservation]
+  id_provider int [ref: > DimProvider.id_provider]
+  id_feedback int [ref: > DimFeedback.id_feedback]
+  id_complaint int [ref: > DimComplaint.id_complaint]
+  rating int [note: 'ETL: DimFeedback']
+  final_price float [note: 'ETL: DimReservation']
+  
+  Note: 'N2 — Raw measures: rating, final_price. KPIs (avg rating, etc.) calculated in BI.'
+}
+
+Table Fact_CommercialPerformance {
+  fact_marketing_id int [pk]
+  id_date int [not null, ref: > DimDate.id_date]
+  id_event int [ref: > DimEvent.id_event]
+  id_reservation int [ref: > DimReservation.id_reservation]
+  id_beneficiary int [ref: > DimBeneficiary.id_beneficiary]
+  id_servicecategory int [ref: > DimServiceCategory.id_servicecategory]
+  id_provider int [ref: > DimProvider.id_provider]
+  id_visitors int [ref: > DimVisitors.id_visitors]
+  nb_visitors int [note: 'ETL: DimVisitors']
+  nb_reservations_site int [note: 'ETL: DimVisitors']
+  final_price float [note: 'ETL: DimReservation']
+  event_budget float [note: 'ETL: DimEvent']
+  service_price float [note: 'ETL: DimServiceCategory']
+  
+  Note: 'N2 — Raw measures. KPIs (conversion rate, CAC, etc.) calculated in BI.'
+}
+
+Table Fact_FinancialProfitability {
+  fact_finance_id int [pk]
+  id_date int [not null, ref: > DimDate.id_date]
+  id_event int [ref: > DimEvent.id_event]
+  id_reservation int [ref: > DimReservation.id_reservation]
+  id_servicecategory int [ref: > DimServiceCategory.id_servicecategory]
+  id_benchmark int [ref: > DimBenchmarkPrice.id_benchmark]
+  id_provider int [ref: > DimProvider.id_provider]
+  final_price float [note: 'ETL: DimReservation']
+  service_price float [note: 'ETL: DimServiceCategory']
+  benchmark_avg_price float [note: 'ETL: DimBenchmarkPrice']
+  event_budget float [note: 'ETL: DimEvent']
+  
+  Note: 'N2 — Raw measures. KPIs (revenue, avg basket, below/aligned/above market share) calculated in BI.'
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LEVEL 3: ANALYTICAL DIMENSIONS
+// ═══════════════════════════════════════════════════════════════
+
+Table DimFeedback {
+  id_feedback int [pk]
+  comment varchar [note: 'rating → Fact_Sat.rating']
+  
+  Note: 'N3 — rating feeds Fact_CustomerSatisfaction.rating'
+}
+
+Table DimComplaint {
+  id_complaint int [pk]
+  subject varchar
+  description varchar
+  status varchar
+  
+  Note: 'N3 — No direct numeric measure; COUNT/aggregation in BI KPIs'
+}
+
+Table DimProvider {
+  id_provider int [pk]
+  provider_name varchar
+  service_type varchar
+  email varchar
+  phone varchar
+  city varchar
+  
+  Note: 'N3 — Filtering/grouping for KPIs'
+}
+
+Table DimVisitors {
+  id_visitors int [pk]
+  visit_date date [note: 'nb_visitors, nb_reservations_site → Fact_Perf']
+  
+  Note: 'N3 — Source for Fact_CommercialPerformance'
+}
+
+Table DimEvent {
+  id_event int [pk]
+  title varchar
+  event_type varchar
+  event_date date [note: 'budget → Fact_Perf.event_budget, Fact_Fin.event_budget']
+  
+  Note: 'N3'
+}
+
+Table DimReservation {
+  id_reservation int [pk]
+  reservation_date date
+  status varchar [note: 'final_price → Fact_Sat, Fact_Perf, Fact_Fin']
+  
+  Note: 'N3 — final_price feeds all 3 facts'
+}
+
+Table DimBeneficiary {
+  id_beneficiary int [pk]
+  first_name varchar
+  last_name varchar
+  email varchar
+  phone varchar
+  
+  Note: 'N3 — Filtering/grouping for KPIs'
+}
+
+Table DimServiceCategory {
+  id_servicecategory int [pk]
+  service_title varchar
+  subcategory_name varchar
+  category_name varchar [note: 'price → Fact_Perf.service_price, Fact_Fin.service_price']
+  
+  Note: 'N3'
+}
+
+Table DimBenchmarkPrice {
+  id_benchmark int [pk]
+  subcategory varchar
+  seasonality varchar
+  period varchar [note: 'avg_price → Fact_Fin.benchmark_avg_price']
+  
+  Note: 'N3 — External benchmark CSV data'
+}

@@ -1,0 +1,69 @@
+# EventZilla — Dashboards par décideur avec formules (hors KPIs prédictifs)
+
+**Périmètre :** même contenu que le Tableau 2 du document « Improved », avec une colonne **Formule** issue du Tableau 1 (KPIs_FINAL).
+
+**Exclusions :** les lignes des dashboards « **Anticipation** » (projections) sont retirées ; elles seront traitées ultérieurement dans la partie **machine learning**.
+
+| Décideur | Dash. | Titre du dashboard | KPI ou information | Formule (KPIs_FINAL / CDC) | Visuel Power BI |
+|---|---|---|---|---|---|
+| Vue transversale (Marketing + Financier + Relation Client) | 0 | **Overview général — santé business et expérience client** | Chiffre d’affaires total | `SUM(final_price)` | **Carte KPI** (grand format) + variation vs période précédente |
+| Vue transversale (Marketing + Financier + Relation Client) | 0 | **Overview général — santé business et expérience client** | Nombre total de réservations | `COUNT(id_reservation)` | **Carte KPI** + **courbe sparkline** |
+| Vue transversale (Marketing + Financier + Relation Client) | 0 | **Overview général — santé business et expérience client** | Taux de conversion | `(COUNT(reservations_confirmées) / SUM(visitors)) × 100` | **Carte KPI** + **courbe** |
+| Vue transversale (Marketing + Financier + Relation Client) | 0 | **Overview général — santé business et expérience client** | Panier moyen | `AVG(final_price)` | **Carte KPI** + **indicateur de tendance** |
+| Vue transversale (Marketing + Financier + Relation Client) | 0 | **Overview général — santé business et expérience client** | CAC | `SUM(marketing_spend) / SUM(new_beneficiaries)` | **Carte KPI** + **jauge** (cible) |
+| Vue transversale (Marketing + Financier + Relation Client) | 0 | **Overview général — santé business et expérience client** | Taux de rétention des bénéficiaires | `(COUNT(beneficiaries_recurrents) / COUNT(total_beneficiaries)) × 100` | **Carte KPI** + **courbe** |
+| Vue transversale (Marketing + Financier + Relation Client) | 0 | **Overview général — santé business et expérience client** | Taux d’annulation | `(COUNT(reservations_annulées) / COUNT(total_reservations)) × 100` | **Carte KPI** + **courbe** |
+| Vue transversale (Marketing + Financier + Relation Client) | 0 | **Overview général — santé business et expérience client** | NPS | `% promoteurs - % détracteurs` | **Carte KPI** + **jauge** |
+| Vue transversale (Marketing + Financier + Relation Client) | 0 | **Overview général — santé business et expérience client** | Taux de résolution des réclamations | `(COUNT(closed_complaints) / COUNT(total_complaints)) × 100` | **Carte KPI** + **barre de progression** |
+| Responsable Marketing | 1 | **Importance de l’activité commerciale, du prix marché et du calendrier** | Nombre total de réservations | `COUNT(id_reservation)` | Carte multiplicateurs + **graphique en courbes** (tendance) |
+| Responsable Marketing | 1 | **Importance de l’activité commerciale, du prix marché et du calendrier** | Taux de conversion | `(COUNT(reservations_confirmées) / SUM(visitors)) × 100` | Carte KPI + **courbes** ou **colonnes** par période |
+| Responsable Marketing | 1 | **Importance de l’activité commerciale, du prix marché et du calendrier** | Taux d’acceptation | `(COUNT(reservations_acceptées) / COUNT(total_reservations)) × 100` | Carte KPI + **histogramme** |
+| Responsable Marketing | 1 | **Importance de l’activité commerciale, du prix marché et du calendrier** | Taux d’annulation | `(COUNT(reservations_annulées) / COUNT(total_reservations)) × 100` | Carte KPI + **courbes** |
+| Responsable Marketing | 1 | **Importance de l’activité commerciale, du prix marché et du calendrier** | Nombre de visiteurs | `SUM(visitors)` | Carte KPI + **courbes** |
+| Responsable Marketing | 1 | **Importance de l’activité commerciale, du prix marché et du calendrier** | Vue d’ensemble visiteurs → réservations | Entonnoir : étapes basées sur `SUM(visitors)` et `COUNT(id_reservation)` (confirmées) — vue composite, pas une mesure DAX unique. | **Entonnoir** |
+| Responsable Marketing | 1 | **Importance de l’activité commerciale, du prix marché et du calendrier** | Part des réservations sous le marché | `(COUNT(final_price < 0.85*benchmark) / COUNT(total)) × 100` | **Graphique en anneau** ou **barres** (une série) |
+| Responsable Marketing | 1 | **Importance de l’activité commerciale, du prix marché et du calendrier** | Part des réservations alignées au marché | `(COUNT(0.85*benchmark ≤ final_price ≤ 1.15*benchmark) / COUNT(total)) × 100` | **Graphique en anneau** ou **barres** |
+| Responsable Marketing | 1 | **Importance de l’activité commerciale, du prix marché et du calendrier** | Part des réservations au-dessus du marché | `(COUNT(final_price > 1.15*benchmark) / COUNT(total)) × 100` | **Graphique en anneau** ou **barres** |
+| Responsable Marketing | 1 | **Importance de l’activité commerciale, du prix marché et du calendrier** | Taux de réservation les jours fériés | `(réservations avec reservation_date ∈ jours fériés nationaux) / nombre total réservations × 100` | **Colonnes groupées** (férié / non férié) + **carte** KPI |
+| Responsable Marketing | 2 | **Importance de la valeur client et qualité de l’offre géographique** | CAC | `SUM(marketing_spend) / SUM(new_beneficiaries)` | Carte KPI + **nuage de points** (ex. vs conversion) |
+| Responsable Marketing | 2 | **Importance de la valeur client et qualité de l’offre géographique** | LTV | `Panier moyen × Fréquence × Durée rétention` | Carte KPI + **courbes** |
+| Responsable Marketing | 2 | **Importance de la valeur client et qualité de l’offre géographique** | Taux de rétention des bénéficiaires | `(COUNT(beneficiaries_recurrents) / COUNT(total_beneficiaries)) × 100` | Carte KPI + **courbes** |
+| Responsable Marketing | 2 | **Importance de la valeur client et qualité de l’offre géographique** | Nombre total de réservations (contexte) | `COUNT(id_reservation)` | **Courbes** |
+| Responsable Marketing | 2 | **Importance de la valeur client et qualité de l’offre géographique** | Taux de conversion (contexte) | `(COUNT(reservations_confirmées) / SUM(visitors)) × 100` | **Graphique combiné** lignes + colonnes |
+| Responsable Marketing | 2 | **Importance de la valeur client et qualité de l’offre géographique** | Catégories nouvelles vs couvertes | `SET_DIFF(catégories marché, catégories EventZella)` | **Table** ou **matrice** + **barres** |
+| Responsable Marketing | 2 | **Importance de la valeur client et qualité de l’offre géographique** | Diversité des catégories réservées | `(COUNT(DISTINCT category_id) / COUNT(total_categories)) × 100` | Carte KPI + **treemap** ou **anneau** |
+| Responsable Marketing | 2 | **Importance de la valeur client et qualité de l’offre géographique** | Top N catégories à ajouter | `TOP N(event_count_observed)` hors catégories couvertes | **Barres horizontales** (classement) |
+| Responsable Marketing | 2 | **Importance de la valeur client et qualité de l’offre géographique** | Répartition des salles par gouvernorat | `COUNT(venue_name) GROUP BY gouvernorat` | **Carte remplie** ou **barres** par région |
+| Responsable Marketing | 2 | **Importance de la valeur client et qualité de l’offre géographique** | Nombre de salles suggérables | `COUNT(venue_name)` | Carte KPI + **barres** par zone |
+| Responsable Financier | 1 | **Importance du chiffre d’affaires et des commissions** | Chiffre d’affaires total | `SUM(final_price)` | Carte KPI + **aires** ou **colonnes** (évolution) |
+| Responsable Financier | 1 | **Importance du chiffre d’affaires et des commissions** | Panier moyen | `AVG(final_price)` | Carte KPI + **courbes** |
+| Responsable Financier | 1 | **Importance du chiffre d’affaires et des commissions** | Taux de commission sur réservation | PDF : « prix final de réservation – prix prestataire » — *incomplet* ; [ex. `(final_price - service_price) / final_price` selon CDC] | Carte KPI + **colonnes** |
+| Responsable Financier | 1 | **Importance du chiffre d’affaires et des commissions** | Montant des commissions (agrégat) | Dérivé du taux de commission sur réservation × base (CA ou marge) — à cadrer avec la formule commission complétée | Carte KPI + **courbes** |
+| Responsable Financier | 1 | **Importance du chiffre d’affaires et des commissions** | Impact des jours fériés sur le CA | `SUM(final_price WHERE holiday) - SUM(final_price WHERE non_holiday)` | **Colonnes groupées** (férié / non férié) ou **indicateur** d’écart |
+| Responsable Financier | 2 | **Qualité de la rentabilité, du catalogue et du marché** | LTV | `Panier moyen × Fréquence × Durée rétention` | Carte KPI + **dispersion** LTV vs segment |
+| Responsable Financier | 2 | **Qualité de la rentabilité, du catalogue et du marché** | CAC | `SUM(marketing_spend) / SUM(new_beneficiaries)` | Carte KPI + **nuage de points** |
+| Responsable Financier | 2 | **Qualité de la rentabilité, du catalogue et du marché** | Panier moyen | `AVG(final_price)` | **Courbes** + carte KPI |
+| Responsable Financier | 2 | **Qualité de la rentabilité, du catalogue et du marché** | Chiffre d’affaires total (contexte rentabilité) | `SUM(final_price)` | **Courbes** |
+| Responsable Financier | 2 | **Qualité de la rentabilité, du catalogue et du marché** | Taux de conversion | `(COUNT(reservations_confirmées) / SUM(visitors)) × 100` | Carte + **barres** |
+| Responsable Financier | 2 | **Qualité de la rentabilité, du catalogue et du marché** | Catégories nouvelles vs couvertes | `SET_DIFF(catégories marché, catégories EventZella)` | **Matrice** ou **barres** |
+| Responsable Financier | 2 | **Qualité de la rentabilité, du catalogue et du marché** | Parts réservations sous / alignées / au-dessus marché | Sous : `(COUNT(final_price < 0.85*benchmark) / COUNT(total)) × 100` — Alignées : `(COUNT(0.85*benchmark ≤ final_price ≤ 1.15*benchmark) / COUNT(total)) × 100` — Au-dessus : `(COUNT(final_price > 1.15*benchmark) / COUNT(total)) × 100`. | **Barres empilées 100 %** ou **anneaux multiples** |
+| Responsable Financier | 2 | **Qualité de la rentabilité, du catalogue et du marché** | Impact jours fériés sur le CA | `SUM(final_price WHERE holiday) - SUM(final_price WHERE non_holiday)` | **Ligne + colonnes** combinés |
+| Responsable Financier | 2 | **Qualité de la rentabilité, du catalogue et du marché** | Top N catégories à ajouter | `TOP N(event_count_observed)` hors catégories couvertes | **Barres horizontales** |
+| Responsable Financier | 2 | **Qualité de la rentabilité, du catalogue et du marché** | Catégories déjà couvertes | Complement / dénombrement des catégories plateforme — à lier au référentiel catégories (*précision CDC*). | **Table** ou **anneau** (volume par catégorie) |
+| Responsable Relation Client | 1 | **Qualité de l’expérience et satisfaction sur le suivi** | Nombre de réclamations | `COUNT(id_complaint)` | Carte KPI + **courbes** |
+| Responsable Relation Client | 1 | **Qualité de l’expérience et satisfaction sur le suivi** | Taux d’annulation | `(COUNT(reservations_annulées) / COUNT(total_reservations)) × 100` | Carte KPI + **courbes** |
+| Responsable Relation Client | 1 | **Qualité de l’expérience et satisfaction sur le suivi** | Note moyenne des prestataires | `AVG(rating)` | Carte KPI + **jauge** ou histogramme de notes |
+| Responsable Relation Client | 1 | **Qualité de l’expérience et satisfaction sur le suivi** | Taux de réclamations pour 100 réservations | `(nb_reclamations / nb_reservations) × 100` | Carte KPI + **courbes** |
+| Responsable Relation Client | 1 | **Qualité de l’expérience et satisfaction sur le suivi** | Répartition des motifs de réclamation (si données) | `COUNT(id_complaint) GROUP BY motif` (attribut « motif » à confirmer au CDC). | **Barres** ou **Pareto** |
+| Responsable Relation Client | 1 | **Qualité de l’expérience et satisfaction sur le suivi** | Taux de résolution des réclamations | `(COUNT(closed_complaints) / COUNT(total_complaints)) × 100` | Carte KPI + **barres** par statut |
+| Responsable Relation Client | 1 | **Qualité de l’expérience et satisfaction sur le suivi** | NPS | `% promoteurs - % détracteurs` | **Jauge** ou **carte avec indicateur** |
+| Responsable Relation Client | 1 | **Qualité de l’expérience et satisfaction sur le suivi** | Distribution des scores de recommandation | Répartition empirique des scores (histogramme) ; lien avec NPS : `% promoteurs − % détracteurs` ; promoteur `rating ≥ 4`, détracteur `rating ≤ 2`. | **Histogramme** |
+| Responsable Relation Client | 2 | **Qualité de l’accès aux salles et du niveau de prix** | Part des salles joignables | `COUNT(contact NOT NULL) / COUNT(total venues) × 100` | Carte KPI + **carte** géographique ou **barres** par région |
+| Responsable Relation Client | 2 | **Qualité de l’accès aux salles et du niveau de prix** | Part réservations sous marché | `(COUNT(final_price < 0.85*benchmark) / COUNT(total)) × 100` | **Anneau** ou **barre** |
+| Responsable Relation Client | 2 | **Qualité de l’accès aux salles et du niveau de prix** | Part réservations alignées marché | `(COUNT(0.85*benchmark ≤ final_price ≤ 1.15*benchmark) / COUNT(total)) × 100` | **Anneau** ou **barre** |
+| Responsable Relation Client | 2 | **Qualité de l’accès aux salles et du niveau de prix** | Part réservations au-dessus marché | `(COUNT(final_price > 1.15*benchmark) / COUNT(total)) × 100` | **Anneau** ou **barre** |
+| Responsable Relation Client | 2 | **Qualité de l’accès aux salles et du niveau de prix** | Lien prix vs plaintes (analyse) | Croisement analytique `final_price` × nombre de réclamations par segment (matrice / nuage de points), pas une formule KPI unique. | **Matrice** ou **nuage de points** (prix / réclamations) |
+
+---
+
+*Note : commission et Catégories couvertes — formules à finaliser avec le CDC (cf. document source).*

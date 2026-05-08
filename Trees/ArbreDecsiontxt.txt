@@ -1,0 +1,693 @@
+Arbres de Décision Hiérarchiques - Business Intelligence
+Marketing • Financier • Relation Client
+
+1. Responsable Marketing
+Objectif Global
+→ Optimiser la performance commerciale
+DESCRIPTIF Décrire l'état actuel de la performance commerciale
+Visualiser le nombre total de réservations
+→ KPI : Nombre total de réservations
+Visualiser le taux de conversion
+→ KPI : Taux de conversion
+Visualiser le nombre de visiteurs
+→ KPI : Nombre de visiteurs
+DESCRIPTIF Décrire la diversité et la répartition des catégories de services
+Visualiser la diversité des catégories réservées
+→ KPI : Diversité des catégories réservées
+Identifier les top N catégories à ajouter
+→ KPI : Top N catégories à ajouter
+Visualiser la répartition géographique
+→ KPI : Répartition des salles par gouvernorat
+EXPLICATIF Expliquer les facteurs influençant le taux de conversion
+Identifier les corrélations avec le taux d'acceptation
+→ KPI : Taux de conversion, Taux d'acceptation
+Comprendre l'impact du taux d'annulation
+→ KPI : Taux d'annulation, Taux de conversion
+Comparer la conversion par nombre de visiteurs
+→ KPI : Taux de conversion, Nombre de visiteurs
+EXPLICATIF Expliquer la performance des campagnes marketing
+Identifier la relation entre CAC et nombre de réservations
+→ KPI : CAC, Nombre total de réservations
+Comprendre l'impact du CAC sur le taux de conversion
+→ KPI : CAC, Taux de conversion
+Comparer le CAC avec le nombre de visiteurs générés
+→ KPI : CAC, Nombre de visiteurs
+EXPLICATIF Expliquer la rentabilité et la valeur client
+Comprendre la relation entre LTV et CAC
+→ KPI : LTV, CAC
+Identifier l'impact du taux de rétention sur la valeur client
+→ KPI : Taux de rétention bénéficiaires, LTV
+Comparer la valeur client avec le nombre de réservations
+→ KPI : LTV, Nombre total de réservations
+EXPLICATIF Expliquer les déterminants de la rétention des bénéficiaires
+Identifier les facteurs influençant le taux de rétention
+→ KPI : Taux de rétention bénéficiaires
+Comprendre la corrélation avec le taux d'annulation
+→ KPI : Taux de rétention bénéficiaires, Taux d'annulation
+Comparer la rétention avec les catégories nouvelles vs couvertes
+→ KPI : Taux de rétention bénéficiaires, Catégories nouvelles vs couvertes
+EXPLICATIF Expliquer le positionnement tarifaire et sa performance
+Identifier l'impact des réservations sous marché sur le volume
+→ KPI : Part réservations sous marché, Nombre total de réservations
+Comprendre la relation entre réservations alignées marché et taux de conversion
+→ KPI : Part réservations alignées marché, Taux de conversion
+Comparer les réservations au-dessus marché avec le volume total
+→ KPI : Part réservations au-dessus marché, Nombre total de réservations
+EXPLICATIF Expliquer les opportunités de croissance par catégorie
+Identifier les top N catégories à ajouter
+→ KPI : Top N catégories à ajouter
+Comprendre la relation entre catégories nouvelles et catégories couvertes
+→ KPI : Catégories nouvelles vs couvertes
+Comparer les opportunités avec la diversité des catégories réservées
+→ KPI : Top N catégories à ajouter, Diversité des catégories réservées
+EXPLICATIF Expliquer l'impact des jours fériés sur les réservations
+Identifier le taux de réservation les jours fériés
+→ KPI : Taux de réservation les jours fériés
+Comprendre la relation entre jours fériés et nombre total de réservations
+→ KPI : Taux de réservation les jours fériés, Nombre total de réservations
+Comparer les réservations jours fériés avec le taux de conversion
+→ KPI : Taux de réservation les jours fériés, Taux de conversion
+EXPLICATIF Expliquer la couverture géographique et son impact
+Identifier les zones sous-couvertes
+→ KPI : Répartition des salles par gouvernorat, Nombre de salles suggérables
+Comprendre l'impact de la couverture sur les réservations
+→ KPI : Nombre de salles suggérables, Nombre total de réservations
+Comparer la répartition géographique avec le taux de conversion
+→ KPI : Répartition des salles par gouvernorat, Taux de conversion
+PRÉDICTIF Prédire l'évolution future de la performance commerciale
+Prédire le nombre de réservations futures
+→ KPI : Nombre total de réservations (projection)
+Prédire le taux de conversion futur
+→ KPI : Taux de conversion (projection)
+Prédire l'évolution du taux de rétention
+→ KPI : Taux de rétention bénéficiaires (projection)
+Prédire l'évolution du CAC et du LTV
+→ KPI : CAC (projection), LTV (projection)
+Prédire le taux de réservation les jours fériés
+→ KPI : Taux de réservation les jours fériés (projection)
+1. Visualisation Graphique - Responsable Marketing
+Objectif Global
+Optimiser la performance commerciale
+
+OBJECTIF DESCRIPTIF
+Décrire l'état actuel de la
+performance commerciale
+
+Visualiser le nombre total
+de réservations
+
+KPI: Nombre total de réservations
+
+Visualiser le taux de conversion
+
+KPI: Taux de conversion
+
+Visualiser le nombre de visiteurs
+
+KPI: Nombre de visiteurs
+
+OBJECTIF DESCRIPTIF
+Décrire la diversité et la répartition
+des catégories de services
+
+Visualiser la diversité des
+catégories réservées
+
+KPI: Diversité des catégories réservées
+
+Identifier les top N catégories
+à ajouter
+
+KPI: Top N catégories à ajouter
+
+Visualiser la répartition géographique
+
+KPI: Répartition des salles par gouvernorat
+
+OBJECTIF EXPLICATIF
+Expliquer les facteurs influençant
+le taux de conversion
+
+Identifier les corrélations avec
+le taux d'acceptation
+
+KPI: Taux de conversion
+Taux d'acceptation
+
+Comprendre l'impact du
+taux d'annulation
+
+KPI: Taux d'annulation
+Taux de conversion
+
+Comparer la conversion par
+nombre de visiteurs
+
+KPI: Taux de conversion
+Nombre de visiteurs
+
+OBJECTIF EXPLICATIF
+Expliquer la performance des
+campagnes marketing
+
+Identifier la relation entre CAC
+et nombre de réservations
+
+KPI: CAC
+Nombre total de réservations
+
+Comprendre l'impact du CAC
+sur le taux de conversion
+
+KPI: CAC
+Taux de conversion
+
+Comparer le CAC avec le nombre
+de visiteurs générés
+
+KPI: CAC
+Nombre de visiteurs
+
+OBJECTIF EXPLICATIF
+Expliquer la rentabilité et
+la valeur client
+
+Comprendre la relation entre
+LTV et CAC
+
+KPI: LTV
+CAC
+
+Identifier l'impact du taux de rétention
+sur la valeur client
+
+KPI: Taux de rétention bénéficiaires
+LTV
+
+Comparer la valeur client avec
+le nombre de réservations
+
+KPI: LTV
+Nombre total de réservations
+
+OBJECTIF EXPLICATIF
+Expliquer les déterminants de la
+rétention des bénéficiaires
+
+Identifier les facteurs influençant
+le taux de rétention
+
+KPI: Taux de rétention bénéficiaires
+
+Comprendre la corrélation avec
+le taux d'annulation
+
+KPI: Taux de rétention bénéficiaires
+Taux d'annulation
+
+Comparer la rétention par
+catégorie de service
+
+KPI: Taux de rétention bénéficiaires
+Catégories nouvelles vs couvertes
+
+OBJECTIF EXPLICATIF
+Expliquer le positionnement tarifaire
+et sa performance
+
+Identifier l'impact des réservations
+sous marché sur le volume
+
+KPI: Part réservations sous marché
+Nombre total de réservations
+
+Comprendre la relation entre réservations
+alignées marché et taux de conversion
+
+KPI: Part réservations alignées marché
+Taux de conversion
+
+Comparer les réservations au-dessus marché
+avec le volume total
+
+KPI: Part réservations au-dessus marché
+Nombre total de réservations
+
+OBJECTIF EXPLICATIF
+Expliquer les opportunités de croissance
+par catégorie
+
+Identifier les top N catégories
+à ajouter
+
+KPI: Top N catégories à ajouter
+
+Comprendre la relation entre catégories
+nouvelles et catégories couvertes
+
+KPI: Catégories nouvelles vs couvertes
+
+Comparer les opportunités avec la
+diversité des catégories réservées
+
+KPI: Top N catégories à ajouter
+Diversité des catégories réservées
+
+OBJECTIF EXPLICATIF
+Expliquer l'impact des jours fériés
+sur les réservations
+
+Identifier le taux de réservation
+les jours fériés
+
+KPI: Taux de réservation les jours fériés
+
+Comprendre la relation entre jours fériés
+et nombre total de réservations
+
+KPI: Taux de réservation les jours fériés
+Nombre total de réservations
+
+Comparer les réservations jours fériés
+avec le taux de conversion
+
+KPI: Taux de réservation les jours fériés
+Taux de conversion
+
+OBJECTIF EXPLICATIF
+Expliquer la couverture géographique
+et son impact
+
+Identifier les zones sous-couvertes
+
+KPI: Répartition des salles par gouvernorat
+Nombre de salles suggérables
+
+Comprendre l'impact de la couverture
+sur les réservations
+
+KPI: Nombre de salles suggérables
+Nombre total de réservations
+
+Comparer la répartition géographique
+avec le taux de conversion
+
+KPI: Répartition des salles par gouvernorat
+Taux de conversion
+
+OBJECTIF PRÉDICTIF
+Prédire l'évolution future de la
+performance commerciale
+
+Prédire le nombre de réservations futures
+
+KPI: Nombre total de réservations
+(projection)
+
+Prédire le taux de conversion futur
+
+KPI: Taux de conversion
+(projection)
+
+Prédire l'évolution du taux de rétention
+
+KPI: Taux de rétention bénéficiaires
+(projection)
+
+Prédire l'évolution du CAC et du LTV
+
+KPI: CAC (projection)
+LTV (projection)
+
+Prédire le taux de réservation
+les jours fériés
+
+KPI: Taux de réservation les jours fériés
+(projection)
+
+2. Responsable Financier
+Objectif Global
+→ Optimiser la rentabilité
+DESCRIPTIF Décrire l'état actuel des revenus et de la performance financière
+Visualiser le chiffre d'affaires total
+→ KPI : Chiffre d'affaires total
+Visualiser le panier moyen
+→ KPI : Panier moyen
+Identifier les top N catégories à ajouter
+→ KPI : Top N catégories à ajouter
+DESCRIPTIF Décrire la structure des revenus et des commissions
+Visualiser le taux de commission sur réservation
+→ KPI : Taux de commission sur réservation
+Comparer les revenus par période
+→ KPI : Chiffre d'affaires total, Panier moyen
+Visualiser l'impact jours fériés sur le CA
+→ KPI : Impact jours fériés sur CA
+EXPLICATIF Expliquer les déterminants de la rentabilité globale
+Comprendre la relation entre LTV et CAC
+→ KPI : LTV, CAC
+Identifier l'impact du panier moyen sur la rentabilité
+→ KPI : Panier moyen, Chiffre d'affaires total
+Comparer la rentabilité avec les catégories nouvelles vs couvertes
+→ KPI : Catégories nouvelles vs couvertes, Panier moyen
+EXPLICATIF Expliquer l'efficacité du coût d'acquisition client
+Comprendre la relation entre CAC et chiffre d'affaires
+→ KPI : CAC, Chiffre d'affaires total
+Identifier l'impact du taux de conversion sur le CAC
+→ KPI : CAC, Taux de conversion
+Comparer le CAC avec le panier moyen généré
+→ KPI : CAC, Panier moyen
+EXPLICATIF Expliquer la valeur client et son impact sur les revenus
+Comprendre l'impact du LTV sur le chiffre d'affaires
+→ KPI : LTV, Chiffre d'affaires total
+Identifier la corrélation entre LTV et panier moyen
+→ KPI : LTV, Panier moyen
+Comparer la valeur client avec les catégories nouvelles vs couvertes
+→ KPI : LTV, Catégories nouvelles vs couvertes
+EXPLICATIF Expliquer l'impact du positionnement tarifaire sur les revenus
+Identifier l'impact des réservations sous marché sur le CA
+→ KPI : Part réservations sous marché, Chiffre d'affaires total
+Comprendre la relation entre réservations alignées marché et panier moyen
+→ KPI : Part réservations alignées marché, Panier moyen
+Comparer les réservations au-dessus marché avec le CA
+→ KPI : Part réservations au-dessus marché, Chiffre d'affaires total
+EXPLICATIF Expliquer l'impact jours fériés sur la performance financière
+Comprendre l'impact jours fériés sur le chiffre d'affaires
+→ KPI : Impact jours fériés sur CA
+Identifier la relation entre jours fériés et panier moyen
+→ KPI : Impact jours fériés sur CA, Panier moyen
+Comparer la performance financière jours fériés vs jours normaux
+→ KPI : Impact jours fériés sur CA, Chiffre d'affaires total
+EXPLICATIF Expliquer la contribution des commissions aux revenus
+Comprendre l'impact du taux de commission sur réservation sur les revenus
+→ KPI : Taux de commission sur réservation, Chiffre d'affaires total
+Identifier la relation entre commission et panier moyen
+→ KPI : Taux de commission sur réservation, Panier moyen
+Comparer les commissions avec les catégories nouvelles vs couvertes
+→ KPI : Taux de commission sur réservation, Catégories nouvelles vs couvertes
+EXPLICATIF Expliquer les opportunités de croissance par catégorie
+Identifier les top N catégories à ajouter
+→ KPI : Top N catégories à ajouter
+Comprendre la relation entre catégories nouvelles et catégories couvertes
+→ KPI : Catégories nouvelles vs couvertes
+Comparer les opportunités avec la rentabilité
+→ KPI : Top N catégories à ajouter, LTV, CAC
+PRÉDICTIF Prédire l'évolution future des revenus et de la rentabilité
+Prédire l'évolution du chiffre d'affaires
+→ KPI : Chiffre d'affaires total (projection)
+Prédire l'évolution du panier moyen
+→ KPI : Panier moyen (projection)
+Prédire l'évolution du LTV et du CAC
+→ KPI : LTV (projection), CAC (projection)
+Prédire l'impact jours fériés futurs sur le CA
+→ KPI : Impact jours fériés sur CA (projection)
+2. Visualisation Graphique - Responsable Financier
+Objectif Global
+Optimiser la rentabilité
+
+OBJECTIF DESCRIPTIF
+Décrire l'état actuel des revenus
+et de la performance financière
+
+Visualiser le chiffre d'affaires total
+
+KPI: Chiffre d'affaires total
+
+Visualiser le panier moyen
+
+KPI: Panier moyen
+
+Identifier les top N catégories
+à ajouter
+
+KPI: Top N catégories à ajouter
+
+OBJECTIF DESCRIPTIF
+Décrire la structure des revenus
+et des commissions
+
+Visualiser le taux de commission
+sur réservation
+
+KPI: Taux de commission sur réservation
+
+Comparer les revenus par période
+
+KPI: Chiffre d'affaires total
+Panier moyen
+
+Visualiser l'impact jours fériés
+sur le CA
+
+KPI: Impact jours fériés sur CA
+
+OBJECTIF EXPLICATIF
+Expliquer les déterminants de la
+rentabilité globale
+
+Comprendre la relation entre
+LTV et CAC
+
+KPI: LTV
+CAC
+
+Identifier l'impact du panier moyen
+sur la rentabilité
+
+KPI: Panier moyen
+Chiffre d'affaires total
+
+Comparer la rentabilité par catégorie
+
+KPI: Catégories nouvelles vs couvertes
+Panier moyen
+
+OBJECTIF EXPLICATIF
+Expliquer l'efficacité du coût
+d'acquisition client
+
+Comprendre la relation entre CAC
+et chiffre d'affaires
+
+KPI: CAC
+Chiffre d'affaires total
+
+Identifier l'impact du taux de conversion
+sur le CAC
+
+KPI: CAC
+Taux de conversion
+
+Comparer le CAC avec le panier moyen
+généré
+
+KPI: CAC
+Panier moyen
+
+OBJECTIF EXPLICATIF
+Expliquer la valeur client et son impact
+sur les revenus
+
+Comprendre l'impact du LTV
+sur le chiffre d'affaires
+
+KPI: LTV
+Chiffre d'affaires total
+
+Identifier la corrélation entre LTV
+et panier moyen
+
+KPI: LTV
+Panier moyen
+
+Comparer la valeur client par catégorie
+
+KPI: LTV
+Catégories nouvelles vs couvertes
+
+OBJECTIF EXPLICATIF
+Expliquer l'impact du positionnement
+tarifaire sur les revenus
+
+Identifier l'impact des réservations
+sous marché sur le CA
+
+KPI: Part réservations sous marché
+Chiffre d'affaires total
+
+Comprendre la relation entre réservations
+alignées marché et panier moyen
+
+KPI: Part réservations alignées marché
+Panier moyen
+
+Comparer les réservations au-dessus marché
+avec le CA
+
+KPI: Part réservations au-dessus marché
+Chiffre d'affaires total
+
+OBJECTIF EXPLICATIF
+Expliquer l'impact jours fériés
+sur la performance financière
+
+Comprendre l'impact jours fériés
+sur le chiffre d'affaires
+
+KPI: Impact jours fériés sur CA
+
+Identifier la relation entre jours fériés
+et panier moyen
+
+KPI: Impact jours fériés sur CA
+Panier moyen
+
+Comparer la performance financière
+jours fériés vs jours normaux
+
+KPI: Impact jours fériés sur CA
+Chiffre d'affaires total
+
+OBJECTIF EXPLICATIF
+Expliquer la contribution des commissions
+aux revenus
+
+Comprendre l'impact du taux de commission
+sur réservation sur les revenus
+
+KPI: Taux de commission sur réservation
+Chiffre d'affaires total
+
+Identifier la relation entre commission
+et panier moyen
+
+KPI: Taux de commission sur réservation
+Panier moyen
+
+Comparer les commissions avec les catégories
+nouvelles vs couvertes
+
+KPI: Taux de commission sur réservation
+Catégories nouvelles vs couvertes
+
+OBJECTIF EXPLICATIF
+Expliquer les opportunités de croissance
+par catégorie
+
+Identifier les top N catégories
+à ajouter
+
+KPI: Top N catégories à ajouter
+
+Comprendre la relation entre catégories
+nouvelles et catégories couvertes
+
+KPI: Catégories nouvelles vs couvertes
+
+Comparer les opportunités avec la rentabilité
+
+KPI: Top N catégories à ajouter
+LTV, CAC
+
+OBJECTIF PRÉDICTIF
+Prédire l'évolution future des revenus
+et de la rentabilité
+
+Prédire l'évolution du chiffre d'affaires
+
+KPI: Chiffre d'affaires total
+(projection)
+
+Prédire l'évolution du panier moyen
+
+KPI: Panier moyen
+(projection)
+
+Prédire l'évolution du LTV et du CAC
+
+KPI: LTV (projection)
+CAC (projection)
+
+Prédire l'impact jours fériés futurs
+sur le CA
+
+KPI: Impact jours fériés sur CA
+(projection)
+
+3. Responsable Relation Client
+Objectif Global
+→ Améliorer la relation client
+DESCRIPTIF Décrire l'état actuel de la satisfaction et de la relation client
+Visualiser le nombre de réclamations
+→ KPI : Nombre de réclamations
+Visualiser le taux d'annulation
+→ KPI : Taux d'annulation
+Comparer la note moyenne prestataires
+→ KPI : Note moyenne prestataires
+Visualiser le taux de réclamations pour 100 réservations
+→ KPI : Taux de réclamations pour 100 réservations
+DESCRIPTIF Décrire la qualité du service et la réactivité
+Visualiser le taux de résolution réclamations
+→ KPI : Taux de résolution réclamations
+Comparer le NPS
+→ KPI : NPS
+Visualiser la part des salles joignables
+→ KPI : Part des salles joignables
+EXPLICATIF Expliquer les déterminants de la satisfaction client
+Comprendre la relation entre note moyenne prestataires et nombre de réclamations
+→ KPI : Note moyenne prestataires, Nombre de réclamations
+Identifier l'impact du taux d'annulation sur les réclamations
+→ KPI : Taux d'annulation, Nombre de réclamations
+Comparer le taux de réclamations pour 100 réservations avec la note moyenne
+→ KPI : Taux de réclamations pour 100 réservations, Note moyenne prestataires
+EXPLICATIF Expliquer les facteurs influençant les réclamations
+Comprendre la relation entre réclamations et taux d'annulation
+→ KPI : Nombre de réclamations, Taux d'annulation
+Identifier l'impact de la note moyenne prestataires sur les réclamations
+→ KPI : Nombre de réclamations, Note moyenne prestataires
+Comparer les réclamations avec le taux de résolution réclamations
+→ KPI : Nombre de réclamations, Taux de résolution réclamations
+EXPLICATIF Expliquer les déterminants de la rétention des bénéficiaires
+Comprendre l'impact du taux de réclamations pour 100 réservations sur la rétention
+→ KPI : Taux de réclamations pour 100 réservations, Taux de rétention bénéficiaires
+Identifier la corrélation entre rétention et taux d'annulation
+→ KPI : Taux de rétention bénéficiaires, Taux d'annulation
+Comparer la rétention avec le nombre de réclamations
+→ KPI : Taux de rétention bénéficiaires, Nombre de réclamations
+EXPLICATIF Expliquer l'impact de la qualité de service sur les réclamations
+Comprendre la relation entre résolution réclamations et nombre de réclamations
+→ KPI : Taux de résolution réclamations, Nombre de réclamations
+Identifier l'impact du taux de résolution sur le taux de réclamations pour 100 réservations
+→ KPI : Taux de résolution réclamations, Taux de réclamations pour 100 réservations
+Comparer la qualité de service avec la part des salles joignables
+→ KPI : Part des salles joignables, Nombre de réclamations
+EXPLICATIF Expliquer l'influence du positionnement tarifaire sur les réclamations
+Comprendre la relation entre réservations sous marché et nombre de réclamations
+→ KPI : Part réservations sous marché, Nombre de réclamations
+Identifier l'impact des réservations alignées marché sur les réclamations
+→ KPI : Part réservations alignées marché, Nombre de réclamations
+Comparer les réservations au-dessus marché avec le taux d'annulation
+→ KPI : Part réservations au-dessus marché, Taux d'annulation
+EXPLICATIF Expliquer les déterminants du NPS (Net Promoter Score)
+Comprendre la relation entre nombre de réclamations et NPS
+→ KPI : Nombre de réclamations, NPS
+Identifier l'impact de la rétention sur le NPS
+→ KPI : Taux de rétention bénéficiaires, NPS
+Comparer le NPS avec la note moyenne prestataires
+→ KPI : NPS, Note moyenne prestataires
+EXPLICATIF Expliquer l'impact de l'accessibilité sur la relation client
+Comprendre l'impact de la part des salles joignables sur le taux de réclamations
+→ KPI : Part des salles joignables, Taux de réclamations pour 100 réservations
+Identifier la relation entre accessibilité et nombre de réclamations
+→ KPI : Part des salles joignables, Nombre de réclamations
+Comparer l'accessibilité avec le taux d'annulation
+→ KPI : Part des salles joignables, Taux d'annulation
+PRÉDICTIF Prédire l'évolution future de la satisfaction et de la relation client
+Prédire l'évolution du taux de réclamations pour 100 réservations
+→ KPI : Taux de réclamations pour 100 réservations (projection)
+Prédire l'évolution du nombre de réclamations
+→ KPI : Nombre de réclamations (projection)
+Prédire l'évolution du taux de rétention
+→ KPI : Taux de rétention bénéficiaires (projection)
+Prédire l'évolution du NPS
+→ KPI : NPS (projection)
+3. Visualisation Graphique - Responsable Relation Client
