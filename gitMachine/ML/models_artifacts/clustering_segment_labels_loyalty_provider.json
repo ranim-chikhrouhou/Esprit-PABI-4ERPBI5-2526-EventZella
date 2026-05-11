@@ -1,0 +1,36 @@
+{
+  "k": 4,
+  "method": "loyalty_rfm_kmeans",
+  "entity": "provider",
+  "description_fr": "Segments fidélité (RFM simplifié) — libellés dérivés des centres K-Means.",
+  "segments": [
+    {
+      "cluster_id": 0,
+      "label_short": "Montants & prix au-dessus de la moyenne — Forte fidélité (fréquence / CA / récence favorable)",
+      "label_long_plain": "Segment 0 — Montants & prix au-dessus de la moyenne — Forte fidélité (fréquence / CA / récence favorable)",
+      "label_metier_fr": "Prestataire **stratégique** : fort volume et CA — partenariats prioritaires.",
+      "share_train_sample": 0.22408963585434175
+    },
+    {
+      "cluster_id": 1,
+      "label_short": "Montants & prix au-dessus de la moyenne — Forte fidélité (fréquence / CA / récence favorable)",
+      "label_long_plain": "Segment 1 — Montants & prix au-dessus de la moyenne — Forte fidélité (fréquence / CA / récence favorable)",
+      "label_metier_fr": "Prestataire **actif** : flux régulier — maintien des conditions commerciales.",
+      "share_train_sample": 0.06722689075630252
+    },
+    {
+      "cluster_id": 2,
+      "label_short": "Montants & prix sous la moyenne — Profil fidélité intermédiaire",
+      "label_long_plain": "Segment 2 — Montants & prix sous la moyenne — Profil fidélité intermédiaire",
+      "label_metier_fr": "Prestataire **ponctuel** : opportunités de développement.",
+      "share_train_sample": 0.23949579831932774
+    },
+    {
+      "cluster_id": 3,
+      "label_short": "Montants & prix sous la moyenne — Fidélité modérée ou récence élevée",
+      "label_long_plain": "Segment 3 — Montants & prix sous la moyenne — Fidélité modérée ou récence élevée",
+      "label_metier_fr": "Prestataire **faible rotation** — suivi commercial ou réorientation.",
+      "share_train_sample": 0.469187675070028
+    }
+  ]
+}

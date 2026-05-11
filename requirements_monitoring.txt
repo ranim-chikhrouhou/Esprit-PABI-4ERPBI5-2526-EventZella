@@ -1,0 +1,9 @@
+# Monitoring Dependencies for EventZilla MLOps
+# Week S13 - Prometheus & Grafana Integration
+
+# Prometheus metrics for FastAPI
+prometheus-client==0.20.0
+prometheus-fastapi-instrumentator==7.0.0
+
+# Additional monitoring utilities
+psutil==5.9.8

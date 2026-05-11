@@ -1,29 +1,29 @@
 {
-  "task": "time_series",
-  "criterion": "F",
-  "series": "nb_fact_rows",
-  "champion_model": "Holt_ExponentialSmoothing",
-  "champion_rule": "RMSE minimal sur le holdout; si egalite des RMSE, Holt est choisi si rmse_holt <= rmse_arima",
-  "target_column_explained": "Volume mensuel d'activit\u00e9 (nombre de lignes de faits compt\u00e9es dans le DW par mois).",
-  "rmse_delta_holt_minus_arima": -0.60296772,
-  "adf_pvalue": 0.0002496300832538065,
-  "kpss_pvalue": 0.1,
-  "decomposition_period_used": 12,
+  "champion_model": "ARIMA",
+  "series": "nb_fact_rows_monthly_from_classification",
+  "test_champion": {
+    "rmse": 9.536540712793945,
+    "mae": 8.321831595323063,
+    "mape": 16.32696553385971,
+    "r2": -0.8429838004847172
+  },
   "test_holt": {
-    "rmse": 38.04731940320474,
-    "mae": 34.549318718502946,
-    "mape": 6.124521012382581
+    "rmse": 10.661633489054159,
+    "mae": 9.107107656098062,
+    "mape": 17.996079264603377,
+    "r2": -1.303495038912795
   },
   "test_arima": {
-    "rmse": 38.65028712749131,
-    "mae": 34.29316623613181,
-    "mape": 6.144083281318748
+    "rmse": 9.536540712793945,
+    "mae": 8.321831595323063,
+    "mape": 16.32696553385971,
+    "r2": -0.8429838004847172
   },
-  "test_champion": {
-    "rmse": 38.04731940320474,
-    "mae": 34.549318718502946,
-    "mape": 6.124521012382581
+  "holt_params": {
+    "smoothing_level": 0.35,
+    "smoothing_trend": 0.12
   },
-  "horizon": 3,
-  "kpi_alignment": "count_id_reservation_mensuel_anticipation"
+  "trained_on": "20260507_123019",
+  "test_horizon_months": 7,
+  "n_months_total": 36
 }

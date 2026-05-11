@@ -88,30 +88,30 @@ def number_input_format_for_feature(col_name: str) -> str:
 
 
 def friendly_feature_label(name: str) -> str:
-    """Libellé court FR pour les champs courants du périmètre performance."""
+    """Short user-friendly labels for common performance fields."""
     n = str(name).lower().replace(" ", "_")
     mapping = {
-        "final_price": "Prix final",
-        "service_price": "Prix service",
-        "event_budget": "Budget événement",
-        "nb_visitors": "Nb visiteurs",
-        "nb_reservations_site": "Nb réservations (site)",
-        "cal_month": "Mois calendaire",
-        "cal_year": "Année",
-        "is_holiday": "Jour férié (0/1)",
-        "id_event": "Clé événement (DW)",
-        "id_beneficiary": "Clé bénéficiaire (DW)",
-        "id_servicecategory": "Clé catégorie service (DW)",
-        "id_provider": "Clé prestataire (DW)",
-        "id_visitors": "Clé visiteurs (DW)",
-        "id_date": "Clé date (DW)",
-        "id_reservation": "Clé réservation (DW)",
+        "final_price": "Final Price",
+        "service_price": "Service Price",
+        "event_budget": "Event Budget",
+        "nb_visitors": "Number of Visitors",
+        "nb_reservations_site": "Number of Bookings (site)",
+        "cal_month": "Calendar Month",
+        "cal_year": "Year",
+        "is_holiday": "Holiday (0/1)",
+        "id_event": "Event ID (database)",
+        "id_beneficiary": "Beneficiary ID (database)",
+        "id_servicecategory": "Service Category ID (database)",
+        "id_provider": "Provider ID (database)",
+        "id_visitors": "Visitors ID (database)",
+        "id_date": "Date ID (database)",
+        "id_reservation": "Booking ID (database)",
         "nb_reservations_loyalty": "Nombre de réservations (fréquence d’activité)",
         "ca_total_loyalty": "Chiffre d’affaires cumulé",
-        "panier_moyen_loyalty": "Panier moyen",
-        "recency_days_loyalty": "Récence — jours depuis la dernière réservation",
-        "avg_nb_visitors_loyalty": "Taille moyenne des événements (visiteurs)",
-        "volume_reservations_site_loyalty": "Volume cumulé (réservations site)",
+        "panier_moyen_loyalty": "Average Order Value",
+        "recency_days_loyalty": "Recency — days since last booking",
+        "avg_nb_visitors_loyalty": "Average Event Size (visitors)",
+        "volume_reservations_site_loyalty": "Total Volume (site bookings)",
     }
     if n in mapping:
         return mapping[n]
@@ -149,8 +149,8 @@ def _segment_title_reader_explain(label_short: str) -> str:
     """Une phrase d’appui pour la démo enseignants (sans jargon technique)."""
     _ = label_short
     return (
-        "Dans ce contexte de test, ce libellé indique **quel type de situation** du DW votre scénario ressemble le plus ; "
-        "le graphique en dessous **compare** votre saisie au profil-type du segment."
+        "In this test context, this label indicates **what type of situation** from the database your scenario most resembles; "
+        "the chart below **compares** your input to the typical profile of the segment."
     )
 
 
@@ -166,17 +166,17 @@ def format_segment_deployment_explanation(
     ``metier_already_shown_above=True`` pour éviter la répétition.
     """
     parts: list[str] = [
-        "#### Que signifie ce résultat ?",
+        "#### What does this result mean?",
         "",
         "Le modèle place votre scénario **dans le segment le plus proche** par rapport à l’apprentissage sur les données du DW "
-        "(il ne retrouve pas une ligne précise en base).",
+        "(it does not retrieve a specific row from the database).",
         "",
     ]
     if label_metier_fr and str(label_metier_fr).strip() and not metier_already_shown_above:
         parts.append(str(label_metier_fr).strip())
         parts.append("")
     elif metier_already_shown_above and label_metier_fr and str(label_metier_fr).strip():
-        parts.append("*La synthèse affichée ci-dessus reprend le libellé du segment.*")
+        parts.append("*The summary displayed above shows the segment label.*")
         parts.append("")
     if not metier_already_shown_above:
         parts.append(f"**Libellé du segment :** {label_short.strip() if label_short else '—'}")
@@ -188,7 +188,7 @@ def format_segment_deployment_explanation(
 def indices_for_radar_storytelling(
     business_idx: list[int], total_dim: int, min_axes: int = 3
 ) -> list[int]:
-    """Radar lisible : privilégier les axes métier ; sinon tout le vecteur."""
+    """Readable radar: prioritize business axes; otherwise the entire vector."""
     if len(business_idx) >= min_axes:
         return business_idx
     if len(business_idx) >= 2:
@@ -215,7 +215,7 @@ def predict_cluster_from_raw_features(
 
 
 def load_clustering_segment_labels_json(models_dir: Path, filename: str = "clustering_segment_labels.json") -> dict | None:
-    """Charge ``clustering_segment_labels*.json`` si présent et valide."""
+    """Loads ``clustering_segment_labels*.json`` if present and valid."""
     path = models_dir / filename
     if not path.is_file():
         return None
@@ -261,14 +261,14 @@ def resolve_segment_labels(
 
 
 def segment_reference_table(k: int, short: list[str], long_: list[str]) -> pd.DataFrame:
-    """Table de référence pour l'UI (un segment par ligne)."""
+    """Reference table for UI (one segment per row)."""
     rows = []
     for i in range(k):
         rows.append(
             {
                 "Id": i,
-                "Libellé (court)": short[i] if i < len(short) else "—",
-                "Description (détail)": long_[i] if i < len(long_) else "—",
+                "Label (short)": short[i] if i < len(short) else "—",
+                "Description (detail)": long_[i] if i < len(long_) else "—",
             }
         )
     return pd.DataFrame(rows)
@@ -276,8 +276,8 @@ def segment_reference_table(k: int, short: list[str], long_: list[str]) -> pd.Da
 
 def sanity_check_centroid_predictions(km) -> pd.DataFrame:
     """
-    Chaque centre projeté dans ``predict`` doit retourner son propre indice de cluster
-    (cohérence sklearn / fichier joblib).
+    Each center projected into ``predict`` should return its own cluster index
+    (sklearn / joblib file consistency check).
     """
     if not hasattr(km, "cluster_centers_") or km.cluster_centers_ is None:
         return pd.DataFrame()
@@ -289,7 +289,7 @@ def sanity_check_centroid_predictions(km) -> pd.DataFrame:
         rows.append(
             {
                 "Segment": i,
-                "Prédiction": int(pred[i]),
+                "Prediction": int(pred[i]),
                 "OK": "✓" if ok else "✗",
             }
         )
@@ -325,7 +325,7 @@ def batch_predict_around_centroid(
 
 
 def contrast_midpoint_prediction(km, seg_a: int, seg_b: int) -> tuple[int, np.ndarray]:
-    """Milieu des deux centres — utile pour illustrer une zone « frontière »."""
+    """Midpoint of two centers — useful to illustrate a « boundary » zone."""
     cc = np.asarray(km.cluster_centers_)
     mid = 0.5 * (cc[seg_a] + cc[seg_b])
     pred = int(km.predict(mid.reshape(1, -1))[0])
@@ -333,12 +333,12 @@ def contrast_midpoint_prediction(km, seg_a: int, seg_b: int) -> tuple[int, np.nd
 
 
 def distances_to_centroids(point: np.ndarray, km) -> pd.DataFrame:
-    """Distances euclidiennes au centre de chaque cluster (espace standardisé)."""
+    """Euclidean distances to each cluster center (standardized space)."""
     if point.size == 0 or not hasattr(km, "cluster_centers_"):
         return pd.DataFrame()
     cc = np.asarray(km.cluster_centers_)
     d = np.linalg.norm(cc - point.reshape(1, -1), axis=1)
-    return pd.DataFrame({"Segment": np.arange(len(d)), "Distance au centre": d})
+    return pd.DataFrame({"Segment": np.arange(len(d)), "Distance to Center": d})
 
 
 # Ordre d’affichage des champs fidélité dans Streamlit (logique métier : activité → montants → récence)
@@ -355,22 +355,22 @@ LOYALTY_FEATURE_DISPLAY_ORDER: tuple[str, ...] = (
 def loyalty_form_group_key(col_name: str) -> str:
     n = str(col_name).lower().replace(" ", "_")
     if "recency" in n:
-        return "récence"
+        return "recency"
     if "panier" in n or "ca_total" in n:
-        return "montants"
-    return "activité"
+        return "amounts"
+    return "activity"
 
 
 def loyalty_form_group_title(key: str) -> str:
     return {
-        "activité": "Fréquence & volumes",
+        "activity": "Frequency & Volumes",
         "montants": "Chiffre d’affaires & panier",
         "récence": "Récence d’activité",
-    }.get(key, "Autres")
+    }.get(key, "Other")
 
 
 def ordered_feature_indices_for_form(feat_names: list[str], *, loyalty: bool) -> list[int]:
-    """Indices colonnes dans un ordre lisible pour le formulaire (fidélité RFM ou wide)."""
+    """Column indices in a readable order for the form (RFM loyalty or wide)."""
     if not loyalty:
         return list(range(len(feat_names)))
     names = [str(x) for x in feat_names]
@@ -386,7 +386,7 @@ def ordered_feature_indices_for_form(feat_names: list[str], *, loyalty: bool) ->
 
 
 def loyalty_artifacts_complete(models_dir: Path, prefix: str) -> bool:
-    """Fichiers requis pour entraîner / scorer une voie fidélité (comme ``run_01_clustering.py``)."""
+    """Required files to train / score a loyalty path (like ``run_01_clustering.py``)."""
     names = (
         f"kmeans_{prefix}.joblib",
         f"kmeans_standard_scaler_{prefix}.joblib",
@@ -448,7 +448,7 @@ def build_loyalty_modes_from_disk(models_dir: Path, legacy_m: dict | None) -> di
 
 
 def merge_metrics_for_loyalty_ui(models_dir: Path, legacy_m: dict | None) -> dict:
-    """Enrichit les métriques chargées depuis JSON si les artefacts fidélité sont complets sur disque."""
+    """Enriches metrics loaded from JSON if loyalty artifacts are complete on disk."""
     if legacy_m is None:
         legacy_m = {}
     modes = build_loyalty_modes_from_disk(models_dir, legacy_m)
@@ -501,7 +501,7 @@ def filter_clustering_metrics_if_models_missing(models_dir: Path, m: dict) -> di
 
 
 def loyalty_json_hint_run_script(models_dir: Path) -> bool:
-    """True si un export JSON fidélité est présent sans la pile complète (``.joblib`` + features)."""
+    """True if a loyalty JSON export is present without the complete stack (``.joblib`` + features)."""
     for prefix in ("loyalty_beneficiary", "loyalty_provider"):
         if (models_dir / f"clustering_segment_labels_{prefix}.json").is_file():
             if not loyalty_artifacts_complete(models_dir, prefix):
@@ -510,7 +510,7 @@ def loyalty_json_hint_run_script(models_dir: Path) -> bool:
 
 
 def segment_card_title_loyalty(metier_fr: str | None, label_short: str) -> str:
-    """Titre lisible : privilégie la phrase métier (VIP, fidèle…) plutôt que le libellé technique des centres."""
+    """Readable title: prioritizes the business phrase (VIP, loyal…) rather than the technical label of centers."""
     if metier_fr and str(metier_fr).strip():
         t = str(metier_fr).replace("**", "").strip()
         for sep in ("—", ":", "\n"):

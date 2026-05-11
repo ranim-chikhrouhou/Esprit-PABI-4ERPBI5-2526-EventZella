@@ -1,0 +1,24 @@
+# Dockerfile — MLflow Tracking Server (EventZilla S12)
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir mlflow==2.13.0 boto3
+
+# Dossiers MLflow
+RUN mkdir -p /app/mlruns /app/mlartifacts
+
+EXPOSE 5000
+
+HEALTHCHECK --interval=15s --timeout=5s --retries=5 \
+    CMD curl -f http://localhost:5000/health || exit 1
+
+CMD ["mlflow", "server", \
+     "--host", "0.0.0.0", \
+     "--port", "5000", \
+     "--backend-store-uri", "sqlite:///mlflow.db", \
+     "--default-artifact-root", "/app/mlartifacts", \
+     "--serve-artifacts"]

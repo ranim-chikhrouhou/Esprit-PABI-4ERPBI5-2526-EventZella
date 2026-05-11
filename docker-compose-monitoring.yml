@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  # FastAPI ML API
+  fastapi:
+    build:
+      context: .
+      dockerfile: Dockerfile.fastapi
+    container_name: eventzella-fastapi
+    ports:
+      - "8000:8000"
+    environment:
+      - EVENTZELLA_SQL_SERVER=${EVENTZELLA_SQL_SERVER}
+      - EVENTZELLA_SQL_DW=${EVENTZELLA_SQL_DW}
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    volumes:
+      - ./ML/models_artifacts:/app/ML/models_artifacts
+      - ./ML/data_processed:/app/ML/data_processed
+    networks:
+      - eventzella-network
+    depends_on:
+      - mlflow
+    restart: unless-stopped
+
+  # MLflow Tracking Server
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    container_name: eventzella-mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/app/mlruns
+      - ./mlartifacts:/app/mlartifacts
+      - ./mlflow.db:/app/mlflow.db
+    networks:
+      - eventzella-network
+    restart: unless-stopped
+
+  # Streamlit Web App
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.fastapi
+    container_name: eventzella-streamlit
+    ports:
+      - "8502:8502"
+    command: ["streamlit", "run", "ML/streamlit_app.py", "--server.port=8502", "--server.address=0.0.0.0"]
+    environment:
+      - EVENTZELLA_SQL_SERVER=${EVENTZELLA_SQL_SERVER}
+      - EVENTZELLA_SQL_DW=${EVENTZELLA_SQL_DW}
+    volumes:
+      - ./ML:/app/ML
+      - ./.streamlit:/app/.streamlit
+    networks:
+      - eventzella-network
+    depends_on:
+      - fastapi
+    restart: unless-stopped
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: eventzella-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus_rules.yml:/etc/prometheus/prometheus_rules.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - eventzella-network
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Grafana Dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: eventzella-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=eventzilla2026
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - eventzella-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+networks:
+  eventzella-network:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:

@@ -1,129 +1,201 @@
 {
-  "name": "EventZilla — CRM Pipeline (Anas)",
+  "name": "EventZilla — CRM ML Pipeline (Webhook + FastAPI + MLflow)",
   "nodes": [
+    {
+      "parameters": {
+        "content": "## EventZilla — CRM\n**Grille Partie n8n**\n- **Webhook** (inférence événementielle) + **HTTP** FastAPI.\n- Merge synchronise RF classification + segmentation fidélité.\n- Sortie : `/save_result` + `/mlflow/log_prediction`.\n- Secrets : `N8N_EZ_CRM_*`, `N8N_EZ_FASTAPI_URL`.",
+        "height": 340,
+        "width": 340,
+        "color": 6
+      },
+      "id": "sticky-crm",
+      "name": "Documentation CRM",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-80, 80]
+    },
     {
       "parameters": {
         "httpMethod": "POST",
         "path": "eventzilla-crm-trigger",
+        "responseMode": "onReceived",
         "options": {}
       },
       "id": "node-webhook-crm",
       "name": "Webhook — Événement CRM",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [200, 300],
+      "position": [200, 360],
       "webhookId": "eventzilla-crm-webhook",
-      "notes": "Déclenché par événement externe. URL: http://localhost:5678/webhook/eventzilla-crm-trigger"
+      "notes": "Production : `/webhook/eventzilla-crm-trigger` — Test : `/webhook-test/...`"
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "http://127.0.0.1:8000/auth/login",
+        "url": "={{ ($env.N8N_EZ_FASTAPI_URL || 'http://127.0.0.1:8000') + '/auth/login' }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "{\n  \"login\": \"anas_allam\",\n  \"password\": \"Anas@CRM2025!\"\n}",
-        "options": { "timeout": 10000 }
+        "jsonBody": "={{ JSON.stringify({ login: $env.N8N_EZ_CRM_LOGIN || 'anas_allam', password: $env.N8N_EZ_CRM_PASSWORD || 'Anas@CRM2025!' }) }}",
+        "options": { "timeout": 15000 }
       },
       "id": "node-login-crm",
-      "name": "Login API — Anas (CRM)",
+      "name": "HTTP — Login JWT (CRM)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [460, 300],
-      "notes": "Authentification Anas Allam — rôle crm_manager."
+      "position": [460, 360],
+      "notes": "Rôle crm_manager."
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "http://127.0.0.1:8000/predict/classification",
+        "url": "={{ ($env.N8N_EZ_FASTAPI_URL || 'http://127.0.0.1:8000') + '/predict/classification' }}",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{
-            "name": "Authorization",
-            "value": "=Bearer {{ $('Login API — Anas (CRM)').item.json.access_token }}"
-          }]
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $('HTTP — Login JWT (CRM)').first().json.access_token }}" }]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "{\n  \"id_date\": 1,\n  \"id_event\": 42,\n  \"id_servicecategory\": 3,\n  \"id_benchmark\": 2,\n  \"id_provider\": 7,\n  \"final_price\": 800,\n  \"service_price\": 700,\n  \"benchmark_avg_price\": 900,\n  \"event_budget\": 1000,\n  \"cal_month\": 4,\n  \"cal_year\": 2024,\n  \"quarter\": 2\n}",
-        "options": { "timeout": 15000 }
+        "jsonBody": "={{ JSON.stringify((() => { const j = $('Webhook — Événement CRM').first().json; const b = j.body ?? j; return { id_date: b.id_date ?? 1, id_event: b.id_event ?? 42, id_servicecategory: b.id_servicecategory ?? 3, id_benchmark: b.id_benchmark ?? 2, id_provider: b.id_provider ?? 7, final_price: b.final_price ?? 800, service_price: b.service_price ?? 700, benchmark_avg_price: b.benchmark_avg_price ?? 900, event_budget: b.event_budget ?? 1000, cal_month: b.cal_month ?? 4, cal_year: b.cal_year ?? 2024, quarter: b.quarter ?? 2 }; })()) }}",
+        "options": { "timeout": 20000 }
       },
       "id": "node-classification-crm",
-      "name": "Anticipation Annulation (RF)",
+      "name": "HTTP — Anticipation annulation (RF)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [720, 180],
-      "notes": "Prédit si la réservation sera confirmed/cancelled/pending."
+      "position": [720, 220],
+      "notes": "Corps inspiré du webhook ; valeurs par défaut si champs absents."
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "http://127.0.0.1:8000/predict/segmentation/beneficiaire",
+        "url": "={{ ($env.N8N_EZ_FASTAPI_URL || 'http://127.0.0.1:8000') + '/predict/segmentation/beneficiaire' }}",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{
-            "name": "Authorization",
-            "value": "=Bearer {{ $('Login API — Anas (CRM)').item.json.access_token }}"
-          }]
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $('HTTP — Login JWT (CRM)').first().json.access_token }}" }]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "{\n  \"nb_reservations_loyalty\": 5,\n  \"ca_total_loyalty\": 6000,\n  \"panier_moyen_loyalty\": 1200,\n  \"recency_days_loyalty\": 45,\n  \"avg_nb_visitors_loyalty\": 60,\n  \"volume_reservations_site_loyalty\": 3\n}",
-        "options": { "timeout": 15000 }
+        "jsonBody": "={{ JSON.stringify((() => { const j = $('Webhook — Événement CRM').first().json; const b = j.body ?? j; return { nb_reservations_loyalty: b.nb_reservations_loyalty ?? 5, ca_total_loyalty: b.ca_total_loyalty ?? 6000, panier_moyen_loyalty: b.panier_moyen_loyalty ?? 1200, recency_days_loyalty: b.recency_days_loyalty ?? 45, avg_nb_visitors_loyalty: b.avg_nb_visitors_loyalty ?? 60, volume_reservations_site_loyalty: b.volume_reservations_site_loyalty ?? 3 }; })()) }}",
+        "options": { "timeout": 20000 }
       },
       "id": "node-segmentation-crm",
-      "name": "Segment Fidélité Client",
+      "name": "HTTP — Segment fidélité client",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [720, 420],
-      "notes": "Identifie le segment de fidélité du client (VIP, Standard, Faible activité)."
+      "position": [720, 500],
+      "notes": "Payload fidélité réutilisable depuis le corps webhook."
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst clas = (items[0] || {}).json || {};\nconst seg  = (items[1] || {}).json || {};\nconst statut = clas.statut_predit || 'inconnu';\nreturn [{\n  json: {\n    timestamp:   new Date().toISOString(),\n    workflow:    'CRM Pipeline',\n    utilisateur: 'Anas Allam',\n    classification: {\n      statut_predit: statut,\n      probabilites:  clas.probabilites,\n      alerte:        statut === 'cancelled' ? 'ALERTE : Risque annulation élevé' : 'RAS'\n    },\n    segmentation: {\n      segment_id:    seg.segment_id,\n      segment_label: seg.segment_label\n    },\n    action_recommandee: statut === 'cancelled'\n      ? 'Contacter le client en priorité'\n      : 'Suivi standard'\n  }\n}];"
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "numberInputs": 2,
+        "options": {}
       },
       "id": "node-merge-crm",
-      "name": "Analyse CRM + Action Recommandée",
+      "name": "Merge — Classification + Segmentation",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [980, 360],
+      "notes": "Synchronisation avant analyse métier."
+    },
+    {
+      "parameters": {
+        "jsCode": "const clas = $('HTTP — Anticipation annulation (RF)').first().json;\nconst seg = $('HTTP — Segment fidélité client').first().json;\nconst statut = clas.statut_predit || 'inconnu';\nreturn [{\n  json: {\n    timestamp: new Date().toISOString(),\n    workflow_label: 'CRM Pipeline',\n    utilisateur: 'Anas Allam',\n    classification: {\n      statut_predit: statut,\n      probabilites: clas.probabilites,\n      modele: clas.modele,\n      alerte: statut === 'cancelled' ? 'ALERTE : risque annulation élevé' : 'RAS',\n    },\n    segmentation: {\n      segment_id: seg.segment_id,\n      segment_label: seg.segment_label,\n      modele: seg.modele,\n    },\n    action_recommandee: statut === 'cancelled'\n      ? 'Contacter le client en priorité'\n      : 'Suivi standard',\n  },\n}];"
+      },
+      "id": "node-shape-crm",
+      "name": "Code — Analyse CRM + action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [980, 300],
-      "notes": "Génère une action recommandée selon le statut prédit."
+      "position": [1240, 360],
+      "notes": "Décision métier lisible pour les équipes CRM."
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "http://127.0.0.1:8000/save_result",
+        "url": "={{ ($env.N8N_EZ_FASTAPI_URL || 'http://127.0.0.1:8000') + '/save_result' }}",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{"name": "Authorization", "value": "=Bearer {{ $('Login API — Anas (CRM)').item.json.access_token }}"}]
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $('HTTP — Login JWT (CRM)').first().json.access_token }}" }]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"workflow\": \"crm\",\n  \"data\": {{ JSON.stringify($json) }}\n}",
-        "options": { "timeout": 15000 }
+        "jsonBody": "={{ JSON.stringify({ workflow: 'crm', data: $json }) }}",
+        "options": { "timeout": 20000 }
       },
       "id": "node-save-crm",
-      "name": "Sauvegarder Résultats CRM",
+      "name": "HTTP — Sauvegarder résultats CRM",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1220, 300],
-      "notes": "POST /save_result → FastAPI écrit le fichier JSON dans n8n/results/."
+      "position": [1500, 240],
+      "notes": "JSON horodaté sous `n8n/results/`."
+    },
+    {
+      "parameters": {
+        "jsCode": "const p = $('Code — Analyse CRM + action').first().json;\nconst probs = p.classification?.probabilites || {};\nconst cancelled = parseFloat(probs.cancelled ?? probs.Cancelled ?? 0) || 0;\nreturn [{\n  json: {\n    experiment_name: 'n8n_CRM_Pipeline',\n    run_name: 'crm_n8n_' + new Date().toISOString().replace(/[:.]/g, '-'),\n    params: {\n      workflow: 'crm',\n      user: 'anas_allam',\n      model_classification: String(p.classification?.modele || ''),\n      model_segmentation: String(p.segmentation?.modele || ''),\n    },\n    metrics: {\n      segment_id: parseFloat(p.segmentation?.segment_id) || 0,\n      prob_cancelled: cancelled,\n    },\n    tags: { source: 'n8n', pipeline: 'crm', automated: 'true' },\n    artifacts: { summary: p },\n  },\n}];"
+      },
+      "id": "node-mlflow-prep-crm",
+      "name": "Code — Payload MLflow CRM",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1500, 480],
+      "notes": "Métrique principale : probabilité « cancelled » si présente."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.N8N_EZ_FASTAPI_URL || 'http://127.0.0.1:8000') + '/mlflow/log_prediction' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $('HTTP — Login JWT (CRM)').first().json.access_token }}" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "node-mlflow-crm",
+      "name": "HTTP — Logger MLflow CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1760, 480],
+      "notes": "Bonus traçabilité expérimentations."
     }
   ],
   "connections": {
     "Webhook — Événement CRM": {
-      "main": [[{ "node": "Login API — Anas (CRM)", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "HTTP — Login JWT (CRM)", "type": "main", "index": 0 }]]
     },
-    "Login API — Anas (CRM)": {
+    "HTTP — Login JWT (CRM)": {
       "main": [[
-        { "node": "Anticipation Annulation (RF)", "type": "main", "index": 0 },
-        { "node": "Segment Fidélité Client",      "type": "main", "index": 0 }
+        { "node": "HTTP — Anticipation annulation (RF)", "type": "main", "index": 0 },
+        { "node": "HTTP — Segment fidélité client", "type": "main", "index": 0 }
       ]]
     },
-    "Anticipation Annulation (RF)": { "main": [[{ "node": "Analyse CRM + Action Recommandée", "type": "main", "index": 0 }]] },
-    "Segment Fidélité Client":      { "main": [[{ "node": "Analyse CRM + Action Recommandée", "type": "main", "index": 1 }]] },
-    "Analyse CRM + Action Recommandée": { "main": [[{ "node": "Sauvegarder Résultats CRM", "type": "main", "index": 0 }]] }
+    "HTTP — Anticipation annulation (RF)": {
+      "main": [[{ "node": "Merge — Classification + Segmentation", "type": "main", "index": 0 }]]
+    },
+    "HTTP — Segment fidélité client": {
+      "main": [[{ "node": "Merge — Classification + Segmentation", "type": "main", "index": 1 }]]
+    },
+    "Merge — Classification + Segmentation": {
+      "main": [[{ "node": "Code — Analyse CRM + action", "type": "main", "index": 0 }]]
+    },
+    "Code — Analyse CRM + action": {
+      "main": [[
+        { "node": "HTTP — Sauvegarder résultats CRM", "type": "main", "index": 0 },
+        { "node": "Code — Payload MLflow CRM", "type": "main", "index": 0 }
+      ]]
+    },
+    "Code — Payload MLflow CRM": {
+      "main": [[{ "node": "HTTP — Logger MLflow CRM", "type": "main", "index": 0 }]]
+    }
   },
   "active": false,
-  "settings": { "saveManualExecutions": true },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "errorWorkflow": "EventZilla — Error Handler"
+  },
   "tags": [{ "name": "EventZilla" }, { "name": "CRM" }, { "name": "ML" }]
 }

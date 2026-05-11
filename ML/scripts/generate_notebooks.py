@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """Génère les 6 notebooks ML (critères A, E, C, D, F + synthèse).
 
     python ML/scripts/generate_notebooks.py

@@ -1,0 +1,36 @@
+# Prometheus Configuration for EventZilla MLOps
+# Week S13 - Monitoring System
+
+global:
+  scrape_interval: 10s  # Scrape metrics every 10 seconds
+  evaluation_interval: 10s  # Evaluate rules every 10 seconds
+  external_labels:
+    monitor: 'eventzilla-ml-monitor'
+    environment: 'production'
+
+# Alerting configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+          # - 'localhost:9093'  # Uncomment if using Alertmanager
+
+# Load alerting rules
+rule_files:
+  - 'prometheus_rules.yml'
+
+# Scrape configurations
+scrape_configs:
+  # EventZilla ML API
+  - job_name: 'eventzilla_ml_api'
+    static_configs:
+      - targets: ['host.docker.internal:8000']  # For Docker
+        # - targets: ['localhost:8000']  # For local setup
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

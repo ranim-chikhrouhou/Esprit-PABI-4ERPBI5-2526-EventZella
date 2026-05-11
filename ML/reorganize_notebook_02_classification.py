@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """Réorganise le markdown du notebook 02 (titres, espacements, séparateurs)."""
 from __future__ import annotations
 
@@ -316,3 +316,4 @@ Les fichiers **`.joblib`** et **`metrics_classification.json`** consolident le p
 
 if __name__ == "__main__":
     main()
+

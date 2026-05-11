@@ -1,0 +1,16 @@
+{
+  "features": [
+    "id_event",
+    "id_beneficiary",
+    "id_servicecategory",
+    "id_provider",
+    "id_visitors",
+    "nb_visitors",
+    "nb_reservations_site",
+    "final_price",
+    "event_budget",
+    "service_price",
+    "cal_month",
+    "cal_year"
+  ]
+}

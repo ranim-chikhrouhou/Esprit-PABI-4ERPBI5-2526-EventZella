@@ -3,7 +3,7 @@
 Chemins et connexion SQL — projet EventZilla (PI BI NEW).
 
 Mode par défaut configuré pour votre environnement :
-- Serveur SQL : `ASUSRANIM`
+- Serveur SQL : `DESKTOP-DVMNP7K\MSSQLSERVERS`
 - Authentification : Windows (`Trusted_Connection=yes`)
 - Base DW : `DW_eventzella`
 
@@ -49,14 +49,14 @@ def reservation_csv_path() -> Path:
     return reservation_source_path()
 
 # Fichiers de sauvegarde physiques (sans extension .bak dans ce dépôt — noms tels que sur disque)
-BACKUP_DW_FILE = DB_BACKUP_DIR / "DW_Eventzilla"
+BACKUP_DW_FILE = DB_BACKUP_DIR / "DW_eventzella"
 BACKUP_SA_FILE = DB_BACKUP_DIR / "SA_eventzilla"
 
 # Noms SQL des bases **après** RESTORE (adapter si vous restaurez sous d'autres noms)
 DATABASE_DW = os.environ.get("EVENTZILLA_SQL_DW", "DW_eventzella")
 DATABASE_SA = os.environ.get("EVENTZILLA_SQL_SA", "SA_eventzilla")
 
-SQL_SERVER = os.environ.get("EVENTZILLA_SQL_SERVER", "ASUSRANIM")
+SQL_SERVER = os.environ.get("EVENTZILLA_SQL_SERVER", "DESKTOP-DVMNP7K\\MSSQLSERVERS")
 SQL_PORT = os.environ.get("EVENTZILLA_SQL_PORT", "")
 SQL_DRIVER = os.environ.get("EVENTZILLA_SQL_DRIVER", "ODBC Driver 17 for SQL Server")
 SQL_CONNECTION_URI = os.environ.get("EVENTZILLA_SQL_URI", "")
@@ -77,7 +77,7 @@ def ml_sql_only() -> bool:
 def backup_paths_status() -> dict[str, bool]:
     """Indique la présence des fichiers de backup dans FilesMachine/DB/."""
     return {
-        "DW_Eventzilla": BACKUP_DW_FILE.is_file(),
+        "DW_eventzella": BACKUP_DW_FILE.is_file(),
         "SA_eventzilla": BACKUP_SA_FILE.is_file(),
     }
 
@@ -112,8 +112,18 @@ def get_sql_engine():
         from sqlalchemy import create_engine
 
         uri = SQL_CONNECTION_URI or build_windows_auth_uri()
-        # ``timeout`` (secondes) : évite un blocage très long si le serveur SQL est arrêté ou injoignable.
-        return create_engine(uri, pool_pre_ping=True, connect_args={"timeout": 15})
+        # Optimized connection settings for better performance
+        return create_engine(
+            uri, 
+            pool_pre_ping=True,
+            pool_size=5,              # Increased pool size for concurrent queries
+            max_overflow=3,           # Allow extra connections when needed
+            pool_recycle=3600,        # Recycle connections after 1 hour
+            connect_args={
+                "timeout": 8,         # Reduced from 15 to fail faster
+                "connect_timeout": 5, # Connection timeout
+            }
+        )
     except Exception as e:
         _SQL_ENGINE_INIT_ERROR = f"{type(e).__name__}: {e}"
         return None

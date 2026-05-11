@@ -1,0 +1,41 @@
+{
+  "note": "Illustration critère A — pas le pipeline final des notebooks C/D",
+  "filter_variance_threshold": {
+    "n_kept": 133,
+    "n_dropped_near_constant": 0,
+    "dropped_examples": []
+  },
+  "filter_high_correlation_pairs_abs_gt_0_95": [
+    [
+      "cal_month",
+      "quarter",
+      0.9654336191728705
+    ]
+  ],
+  "wrapper_rfe_ridge": {
+    "n_features_to_select": 12,
+    "support_features": [
+      "final_price",
+      "full_date_2022-01-07",
+      "full_date_2022-01-18",
+      "full_date_2022-02-08",
+      "full_date_2022-02-09",
+      "full_date_2022-02-25",
+      "full_date_2022-02-26",
+      "full_date_2022-03-01",
+      "full_date_2022-03-18",
+      "full_date_2022-04-09",
+      "full_date_2022-04-21",
+      "full_date_2022-04-29"
+    ]
+  },
+  "embedded_lassocv": {
+    "alpha_chosen": 84.42446195431013,
+    "top_features_by_abs_coef": [
+      [
+        "final_price",
+        15735.178310605612
+      ]
+    ]
+  }
+}

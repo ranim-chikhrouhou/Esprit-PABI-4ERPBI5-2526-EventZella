@@ -1,7 +1,5 @@
 # EventZilla BI — Marketplace Intelligence Solution
 
-> **Couche ML + Streamlit** : notebooks, scripts et application sous **`ML/`** ; configuration Streamlit dans **`.streamlit/`**. Exclusions Git, synchronisation et commandes : **`LISEZMOI_gitMachine.md`**. Dépôt : [Esprit-PABI-4ERPBI5-2526-EventZella](https://github.com/ranim-chikhrouhou/Esprit-PABI-4ERPBI5-2526-EventZella.git).
-
 ## Équipe : ctrlAltWin (Classe 4Bi5)
 
 - **Project Lead :** Ranim Chikhrouhou  
@@ -12,30 +10,36 @@
 
 ## Présentation du projet
 
-**EventZilla BI** est une solution décisionnelle de bout en bout pour une marketplace événementielle tunisienne. Le projet transforme des données brutes (SQL Server, Excel/CSV, etc.) en pilotage stratégique : croissance, rentabilité, satisfaction client — **Staging → Data Warehouse (schéma en étoile) → Power BI**, avec automatisation et **Row-Level Security (RLS)**.
+**EventZilla BI** est une solution décisionnelle de bout en bout pour une marketplace événementielle. Le projet transforme des données brutes (SQL Server, Excel/CSV, etc.) en un écosystème de pilotage : **Staging → Data Warehouse (schéma en étoile) → Power BI**, avec automatisation et sécurité (RLS).
 
 ---
 
-## Structure du dépôt (Git)
+## Arborescence du dépôt
+
+À la **racine** du projet, seuls `README.md` et `.gitignore` restent volontairement (convention Git). Tout le reste est regroupé par domaine :
 
 | Dossier | Contenu |
 |---------|---------|
-| **`Reports/`** | Rapport Power BI (`.pbix`). |
-| **`DataBase/`** | Sauvegardes / artefacts base (selon organisation du dépôt). |
-| **`Data_Sources/`** | Jeux Excel sources. |
-| **`ML/`** | **Machine Learning** : notebooks `00_A`–`06_B`, `05`, scripts `run_*.py`, `streamlit_app.py`, `DataExcell/`, `processed/` (JSON), `models_artifacts/` (métriques JSON). Voir `ML/README.md`. |
-| **`.streamlit/`** | Thème et options de l’app Streamlit. |
-| **`Liste_Des_Kpis_Updated_English_DAX.md`** | Documentation KPI (racine du dépôt, si présent). |
+| **`scripts/`** | Scripts Python et PowerShell de génération (`build_*.py`, `convert_*.ps1`). |
+| **`deliverables/`** | Sorties Markdown / HTML / PDF des tableaux de bord (fichiers générés ou exports). |
+| **`docs/`** | `DAX_Measures.md`, `Liste_Des_Kpis_Updated_English_DAX.md`, `eventzilla/` (source `EventZilla_Dashboards_KPIs_Objectifs.md`), `references/` (PDF optionnels). |
+| **`config/`** | `requirements.txt` pour les scripts Python. |
+| **`Reports/`** | Rapport Power BI (`.pbix`) — voir `Reports/README.md`. |
+| **`Database/`** | Emplacement alternatif / doc ; sauvegardes SQL principales : **`FilesMachine/DB/`** (`DW_Eventzilla`, `SA_eventzilla`). |
+| **`FilesMachine/`** | **DB** (sauvegardes DW/SA), dossiers optionnels `data_original` / `datascrapped`, PDF référence — voir `FilesMachine/README.md`. |
+| **`Data_Sources/`** | Fichiers sources Excel — voir `Data_Sources/README.md`. |
+| **`ScriptsDiagrams/`** | Schémas DWH (DBML, Mermaid, PlantUML). |
+| **`Trees/`** | Arbres de décision + `ArbreDecsiontxt.txt`. |
+| **`EDAs/`** | Notebooks d’analyse exploratoire. |
+| **`ML/`** | **Machine Learning** : notebooks, scripts `run_*.py`, et **fichiers `.csv` source** (tout sous `ML/`, hors `processed/` et `models_artifacts/`). Voir `ML/README.md`. |
 
-Sur une copie de travail étendue du projet, d’autres dossiers peuvent exister localement (`docs/`, `scripts/`, `deliverables/`, etc.) ; ils ne sont pas tous obligatoirement sur cette branche.
-
-**Variables d’environnement (ML / SQL) :** voir `ML/ml_paths.py` (`EVENTZILLA_SQL_*`, `EVENTZILLA_ML_SQL_ONLY`, etc.). Ne pas committer de secrets.
+**Variables d’environnement (ML / SQL) :** `EVENTZILLA_SQL_URI` — connexion à la base **`DW_Eventzilla`** restaurée depuis `FilesMachine/DB/DW_Eventzilla` (voir `ML/ml_paths.py`).
 
 ---
 
 ## Architecture technique & pipeline (E-LT)
 
-1. **Sources :** **Staging Area (SA)** sur **SQL Server** ; fichiers **Excel/CSV** (benchmarks, marketing).  
+1. **Sources :** **Staging Area (SA)** sur **SQL Server** ; fichiers **Excel/CSV** (benchmarks, marketing) dans `Data_Sources/`.  
 2. **Stockage :** **Data Warehouse (DW)** en **schéma en étoile** pour les mesures DAX.  
 3. **Visualisation :** Power BI Desktop & Service.  
 4. **Middleware :** **On-premises Data Gateway** entre le DW local et le cloud.  
@@ -45,59 +49,42 @@ Sur une copie de travail étendue du projet, d’autres dossiers peuvent exister
 ## Automatisation & Executive Summary
 
 - **Rafraîchissement :** planification bi-quotidienne (**8h00 / 14h00**) via la Gateway.  
-- **Executive Summary :** page avec **Smart Narrative** pour des résumés textuels automatiques des KPI.  
+- **Executive Summary :** page dédiée avec **Smart Narrative** pour des résumés textuels automatiques des KPI.  
 
 ---
 
 ## Gouvernance & sécurité (RLS)
 
-Filtrage dynamique avec **`USERPRINCIPALNAME()`** :
+**Row-Level Security** avec filtrage dynamique **`USERPRINCIPALNAME()`** :
 
-- **Marketing :** CAC, ROI campagnes, funnel.  
-- **Finance :** marges, commissions, rentabilité.  
-- **Relation client :** NPS, plaintes, taux de résolution.  
+- **Rôle Marketing :** CAC, ROI campagnes, funnel commercial.  
+- **Rôle Finance :** marges, commissions, rentabilité.  
+- **Rôle relation client :** NPS, réclamations, taux de résolution.  
+
+Validation via **« Voir en tant que »** dans Power BI Service.  
 
 ---
 
-## ML & Streamlit (raccourci)
+## Documentation DAX & génération des livrables
 
-```text
-py -3.11 -m pip install -r ML/requirements.txt
-streamlit run ML/streamlit_app.py
+- Point d’entrée : **`docs/DAX_Measures.md`**  
+- Régénération (depuis la **racine** du dépôt) :
+
+```powershell
+cd "chemin\vers\PI BI NEW"
+pip install -r config/requirements.txt
+python scripts/build_dashboards_table2_with_formulas.py
+python scripts/build_dashboards_table2_dax_et_visuels.py
 ```
 
-Ordre conseillé des notebooks : **00_A** → **01_E** / **02_C** / **03_D** / **04_F** → **05** ; **06_B** documente le critère « compréhension des modèles ».
+PDF du document objectifs (Pandoc) : `.\scripts\convert_EventZilla_doc_to_pdf.ps1`
 
 ---
 
-## Validation S12 (MLOps)
+## KPIs implémentés (aperçu)
 
-La validation S12 (industrialisation ML) est documentée dans `docs/S12_VALIDATION_MLOPS.md`.
-
-Points couverts:
-- tracking d'expériences avec MLflow,
-- pipeline d'entraînement automatisé,
-- gestion/versioning des artefacts modèles,
-- serving FastAPI (`/predict`),
-- exécution Docker (`api` + `mlflow`),
-- test de bout en bout pour la démo.
-
-Raccourci démarrage démo:
-
-```text
-docker compose -f docker-compose.mlops.yml up -d
-```
-
-Puis ouvrir:
-- API: `http://127.0.0.1:8000/docs`
-- MLflow: `http://127.0.0.1:5000`
+Plus de **50 indicateurs** : performance commerciale (conversion, AOV), analyse financière (revenu, commissions), fidélité (rétention, NPS), etc. — détail dans `docs/eventzilla/EventZilla_Dashboards_KPIs_Objectifs.md` et `deliverables/`.  
 
 ---
 
-## KPIs (aperçu)
-
-Plus de **50 indicateurs** : performance commerciale (conversion, AOV), analyse financière (revenu, commissions), fidélité (rétention, NPS), etc.
-
----
-
-*Projet académique — équipe **ctrlAltWin** — solution BI moderne, sécurisée et documentée.*
+*Projet académique — équipe **ctrlAltWin** — solution BI moderne, sécurisée et documentée pour Git.*

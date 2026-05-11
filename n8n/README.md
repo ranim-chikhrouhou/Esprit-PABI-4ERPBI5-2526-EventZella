@@ -1,155 +1,148 @@
-# EventZilla — Workflows n8n (Automatisation ML)
+# EventZilla — Workflows n8n (automatisation ML)
 
-## Architecture Globale
+Ce dossier contient les exports JSON **prêts à importer** pour couvrir la grille **« Partie 1 — N8N ML Automation »** : pipeline ML bout-en-bout, diversité des nœuds (HTTP, Webhook, Cron / Schedule, Execute Command), persistance des prédictions, MLflow, gestion d’erreurs et documentation.
+
+---
+
+## Fichiers livrés
+
+| Fichier | Rôle |
+|---------|------|
+| `workflow_finance.json` | Finance — **Schedule** → FastAPI (Ridge + Holt) → fichier + **MLflow** |
+| `workflow_webhook_finance.json` | Finance — **Webhook** (inférence à la demande), même sortie |
+| `workflow_marketing.json` | Marketing — **Schedule** quotidien → segmentation + classification → fichier + **MLflow** |
+| `workflow_crm.json` | CRM — **Webhook** → classification + segmentation → fichier + **MLflow** |
+| `workflow_retraining_weekly.json` | Bonus — **Schedule** + **Execute Command** (`run_pipeline_s12.py`) |
+| `workflow_error_handler.json` | **Error Trigger** → `/alert/error` (logs + email si SMTP configuré) |
+| `env.example` | Variables d’environnement recommandées (sans secrets en prod idéal) |
+
+Les anciens exports redondants (`workflow_finance_*mlflow*.json`, etc.) ont été **supprimés** au profit de `workflow_finance.json` qui centralise MLflow et la fusion robuste.
+
+---
+
+## Cartographie grille « Excellent »
+
+| Critère | Exigence | Réalisation EventZilla |
+|--------|----------|-------------------------|
+| **A — Architecture** | Trigger → données → modèle → sortie structurée | Chaque pipeline va du trigger au stockage (`/save_result`) avec étapes ML nommées ; **Merge** pour synchroniser deux branches parallèles sans double exécution du Code. |
+| **A — Documentation** | Nœuds étiquetés + README | Notes sur les nœuds + sticky notes ; ce README décrit les choix. |
+| **B — Intégration ML** | API / script | Toutes les inférences passent par **FastAPI** (`ML/api`). |
+| **B — Variété nœuds** | HTTP, Webhook, Cron, Execute Command | **HTTP** partout ; **Webhook** CRM + Finance ; **Schedule** Marketing/Finance/Réentraînement ; **Execute Command** réentraînement. |
+| **B — Secrets** | Hors fichier | Login via variables `N8N_EZ_*` (fallback démo dans les expressions si non défini — à retirer en production). |
+| **C — Inférence auto** | Cron ou webhook + persistance | Cron (Finance/Marketing) + Webhooks (CRM/Finance) ; JSON dans `n8n/results/`. |
+| **C — Bonus réentraînement** | Pipeline planifiée | `workflow_retraining_weekly.json` appelle `python run_pipeline_s12.py`. |
+| **D — Robustesse** | Erreurs / notifications | Chaque workflow métier définit `errorWorkflow` → **EventZilla — Error Handler** → log JSONL + email Gmail si variables serveur renseignées. |
+
+---
+
+## Schéma général
 
 ```
-[Trigger]
-    │
-    ▼
-[Login API FastAPI]  ──→  JWT Token
-    │
-    ├──→ [Prédiction Modèle 1]
-    │
-    ├──→ [Prédiction Modèle 2]
-    │
-    ▼
-[Fusionner Résultats]
-    │
-    ▼
-[Sauvegarder JSON]  +  [Error Handler → Email]
+[ Schedule ou Webhook ]
+        │
+        ▼
+[ Login JWT FastAPI ]
+        │
+        ├──► [ Modèle A ] ──┐
+        │                   ├──► [ Merge ] ─► [ Code rapport ]
+        └──► [ Modèle B ] ──┘                        │
+                                                   ├──► POST /save_result
+                                                   └──► POST /mlflow/log_prediction
 ```
 
 ---
 
-## Prérequis — Lancer dans cet ordre
+## Prérequis — lancer dans cet ordre
 
 ```bash
 # Terminal 1 — API FastAPI (backend ML)
-python -m uvicorn ML.api.main:app --reload --port 8000
+python run_fastapi.py
+# ou : python -m uvicorn ML.api.main:app --host 127.0.0.1 --port 8000
 
 # Terminal 2 — n8n (orchestrateur)
-n8n start
-# → Ouvrir http://localhost:5678
+npx n8n
+# → http://localhost:5678
 
-# Terminal 3 — Streamlit (app déploiement)
-streamlit run ML/streamlit_app.py
+# Terminal 3 (optionnel) — MLflow UI si vous utilisez le tracking distant/local du projet
 ```
 
----
-
-## Workflows disponibles
-
-| Fichier | Décideur | Trigger | Modèles |
-|---------|----------|---------|---------|
-| `workflow_marketing.json` | Ranim Chikhrouhou | Cron quotidien 08h00 | K-Means (E) + Random Forest (C) |
-| `workflow_finance.json` | Naïma Sarraj | Cron hebdo lundi 07h00 | Ridge (D) + Holt (F) |
-| `workflow_crm.json` | Anas Allam | Webhook événementiel | Random Forest (C) + K-Means (E) |
-| `workflow_error_handler.json` | Tous | Error Trigger | Notification email |
+Copier `env.example` vers votre configuration de variables n8n et renseigner au minimum `N8N_EZ_FASTAPI_URL` et `EVENTZILLA_REPO_ROOT` pour le réentraînement.
 
 ---
 
-## Comment importer dans n8n
+## Import dans n8n
 
-```
-1. Ouvrir http://localhost:5678
-2. Menu supérieur → "+" → New Workflow
-3. Menu "..." (3 points) → Import from File
-4. Sélectionner workflow_marketing.json
-5. Répéter pour les 3 autres workflows
-6. Configurer "EventZilla — Error Handler" dans
-   Settings de chaque workflow → Error Workflow
-```
+1. **Importer d’abord** `workflow_error_handler.json`, puis activer si besoin.
+2. Importer les workflows métier (`workflow_*.json`).
+3. Pour chaque workflow métier : **Workflow Settings → Error workflow** → choisir **EventZilla — Error Handler** (le nom doit correspondre exactement).
+4. **Execute Command** : selon la version n8n / politique de sécurité, autoriser explicitement ce nœud sur l’instance.
 
 ---
 
-## Description des Nœuds
+## URLs webhook (tests)
 
-### Workflow Marketing (Ranim — marketing_manager)
+| Workflow | Mode test | Mode production |
+|----------|-----------|-----------------|
+| CRM | `POST http://localhost:5678/webhook-test/eventzilla-crm-trigger` | `.../webhook/eventzilla-crm-trigger` |
+| Finance | `POST http://localhost:5678/webhook-test/eventzilla-finance-trigger` | `.../webhook/eventzilla-finance-trigger` |
 
-| Nœud | Type n8n | Rôle |
-|------|----------|------|
-| Déclencheur Quotidien 08h00 | Schedule Trigger | Déclenche automatiquement chaque matin |
-| Login API — Ranim | HTTP Request POST | Authentification SQL Server → JWT token |
-| Segmentation Bénéficiaires | HTTP Request POST | Appel `/predict/segmentation/beneficiaire` → K-Means fidélité |
-| Classification Statut Réservation | HTTP Request POST | Appel `/predict/classification` → RF champion |
-| Fusionner Résultats | Code (JavaScript) | Consolidation des deux prédictions |
-| Sauvegarder Prédictions Marketing | Write Binary File | Fichier JSON daté dans `n8n/results/` |
-| Vérifier Succès | IF | Déclenchement alerte si prédiction vide |
-
-### Workflow Finance (Naïma — financial_manager)
-
-| Nœud | Type n8n | Rôle |
-|------|----------|------|
-| Déclencheur Hebdo Lundi 07h00 | Schedule Trigger | Rapport financier hebdomadaire |
-| Login API — Naïma | HTTP Request POST | Authentification → rôle financial_manager |
-| Prédiction Montant Final (Ridge) | HTTP Request POST | Appel `/predict/regression` → Ridge (R²≈1.0) |
-| Prévision CA Mensuel (Holt) | HTTP Request GET | Appel `/predict/timeseries?horizon=3` → Holt |
-| Fusionner Résultats Finance | Code (JavaScript) | Rapport financier consolidé |
-| Sauvegarder Rapport Finance | Write Binary File | JSON hebdomadaire dans `n8n/results/` |
-
-### Workflow CRM (Anas — crm_manager)
-
-| Nœud | Type n8n | Rôle |
-|------|----------|------|
-| Webhook — Événement CRM | Webhook POST | Déclenché par événement externe (nouvelle réservation) |
-| Login API — Anas | HTTP Request POST | Authentification → rôle crm_manager |
-| Anticipation Annulation (RF) | HTTP Request POST | Appel `/predict/classification` → statut prédit |
-| Segment Fidélité Client | HTTP Request POST | Appel `/predict/segmentation/beneficiaire` |
-| Analyse CRM + Action Recommandée | Code (JavaScript) | Génère alerte si statut = cancelled |
-| Sauvegarder Analyse CRM | Write Binary File | JSON horodaté dans `n8n/results/` |
-
-### Workflow Error Handler (Tous les workflows)
-
-| Nœud | Type n8n | Rôle |
-|------|----------|------|
-| Error Trigger | Error Trigger | Capte toute erreur dans les 3 workflows |
-| Formater Message Erreur | Code (JavaScript) | Prépare le message d'alerte |
-| Notification Email Erreur | Email Send | Envoie l'alerte à l'équipe |
+Le script `test_workflows.py` déclenche CRM et Finance automatiquement si n8n tourne.
 
 ---
 
-## Endpoints API utilisés
+## Endpoints FastAPI utilisés
 
-| Endpoint | Méthode | Accès | Modèle |
-|----------|---------|-------|--------|
-| `/auth/login` | POST | Tous | — |
-| `/predict/classification` | POST | Marketing, Finance, CRM | Random Forest (champion C) |
-| `/predict/regression` | POST | Finance, Marketing | Ridge (champion D, R²≈1.0) |
-| `/predict/segmentation/{type}` | POST | Marketing, CRM | K-Means fidélité (critère E) |
-| `/predict/timeseries` | GET | Finance, Marketing | Holt (champion F, MAPE≈6.1%) |
-| `/metrics` | GET | Tous | — (métriques JSON) |
+| Endpoint | Usage |
+|----------|--------|
+| `POST /auth/login` | JWT par rôle |
+| `POST /predict/regression` | Finance (et utilisateurs autorisés par RBAC) |
+| `GET /predict/timeseries` | Finance |
+| `POST /predict/classification` | Marketing, CRM |
+| `POST /predict/segmentation/beneficiaire` | Marketing, CRM |
+| `POST /save_result` | Persistance JSON dans `n8n/results/` |
+| `POST /mlflow/log_prediction` | Tracking (schéma `MLflowLogRequest`) |
+| `POST /alert/error` | Handler d’erreurs n8n |
 
 ---
 
 ## Résultats générés
 
-Les fichiers sont sauvegardés dans `n8n/results/` :
+Les fichiers sont créés par FastAPI sous `n8n/results/` :
 
 ```
 n8n/results/
-├── marketing_predictions_2026-04-16.json
-├── finance_predictions_2026-04-16.json
-└── crm_predictions_2026-04-16_08-30.json
+├── marketing_predictions_YYYY-MM-DD.json
+├── finance_predictions_YYYY-MM-DD.json
+├── crm_predictions_YYYY-MM-DD_HH-MM.json
+└── error_log.jsonl
 ```
 
 ---
 
-## Test manuel d'un workflow
+## Décisions de conception (résumé)
 
-```
-n8n → Ouvrir workflow → Bouton "Execute Workflow"
-→ Vérifier l'onglet "Output" de chaque nœud
-→ Vérifier http://localhost:5678/executions pour l'historique
+| Décision | Pourquoi |
+|----------|----------|
+| **Merge « Combine by position »** | Quand deux branches parallèles alimentent un Code, sans Merge le nœud peut s’exécuter deux fois ou fusionner dans un ordre non garanti. |
+| **Références `$('Nom du nœud').first().json`** | Après le Merge, le Code lit explicitement chaque réponse HTTP pour Marketing/CRM et évite les collisions de champs (`modele`, etc.). |
+| **Payload MLflow via Code** | Garantit des métriques **numériques** (`Dict[str,float]`) et un champ `artifacts` sérialisable côté API. |
+| **Variables `N8N_EZ_*`** | Répond à l’exigence « credentials gérés proprement » sans multiplier les Credential n8n pour une API maison. |
+| **Double déclenchement Finance** | Cron pour reporting ; Webhook pour événements — couvre explicitement planification **et** inférence événementielle. |
+
+---
+
+## Test rapide
+
+Depuis la racine du projet « PI BI NEW » :
+
+```bash
+python n8n/test_workflows.py
 ```
 
 ---
 
-## Décisions de conception
+## Maintenance
 
-| Décision | Justification |
-|----------|---------------|
-| JWT via FastAPI | Sécurité : token expirant 8h, basé sur logins SQL Server |
-| Cron pour Marketing/Finance | Reporting périodique — cohérent avec la fréquence de décision (quotidienne/hebdomadaire) |
-| Webhook pour CRM | Réactivité événementielle — le CRM doit agir en temps réel sur les annulations |
-| Error Workflow centralisé | Un seul handler pour les 3 workflows — maintenance simplifiée |
-| Stockage JSON local | Traçabilité des prédictions — preuves d'automatisation datées |
+- Ajuster les horaires dans les **Schedule Trigger** depuis l’UI n8n.
+- Adapter la commande du workflow réentraînement sous Linux/Mac (`python3`, chemins).
+- En production : retirer les mots de passe en dur dans les expressions en vous assurant que **toutes** les variables `N8N_EZ_*` sont définies sur le serveur n8n.

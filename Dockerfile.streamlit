@@ -1,0 +1,33 @@
+# Dockerfile — Streamlit Web App (EventZilla S12)
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir \
+    streamlit==1.42.0 \
+    requests \
+    pandas \
+    numpy \
+    plotly
+
+# Copier uniquement ce dont Streamlit a besoin
+COPY ML/streamlit_predict.py ./ML/streamlit_predict.py
+COPY ML/__init__.py ./ML/__init__.py 2>/dev/null || true
+
+RUN mkdir -p ML/models_artifacts ML/data_processed
+
+ENV PYTHONUNBUFFERED=1
+ENV EVENTZILLA_API_URL=http://fastapi:8000
+
+EXPOSE 8502
+
+HEALTHCHECK --interval=15s --timeout=5s --retries=3 \
+    CMD curl -f http://localhost:8502/_stcore/health || exit 1
+
+CMD ["streamlit", "run", "ML/streamlit_predict.py", \
+     "--server.port=8502", \
+     "--server.address=0.0.0.0", \
+     "--server.headless=true"]

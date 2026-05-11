@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 88" role="img" aria-label="Eventzilla">
+  <defs>
+    <linearGradient id="ezg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="55%" stop-color="#1d8bd6"/>
+      <stop offset="100%" stop-color="#0c4a6e"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#ezg)" d="M16 12h168c6.6 0 12 5.4 12 12v16c-8 0-8 8 0 8v16c0 6.6-5.4 12-12 12H16c-6.6 0-12-5.4-12-12V24c0-6.6 5.4-12 12-12z"/>
+  <text x="100" y="58" text-anchor="middle" font-size="44" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-weight="700">E</text>
+</svg>

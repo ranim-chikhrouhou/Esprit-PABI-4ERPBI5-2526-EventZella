@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-EventZilla — laboratoire ML (Streamlit), interface claire, accents teal, graphiques Plotly lisibles.
+EventZilla — ML laboratory (Streamlit), clear interface, teal accents, readable Plotly charts.
 
-Lancer depuis la racine du dépôt :
+Launch from repository root :
     streamlit run ML/streamlit_app.py
 
-Logo : placez une image PNG sous ``ML/assets/eventzilla_logo.png`` (optionnel) ;
+Logo : placez une image PNG sous ``ML/assets/eventzilla_logo.png`` (optional) ;
 sinon le fichier vectoriel ``ML/assets/eventzilla_ticket.svg`` est utilisé.
 """
 from __future__ import annotations
@@ -27,6 +27,14 @@ import joblib  # noqa: E402
 import streamlit as st  # noqa: E402
 
 from ML.ml_paths import ML_MODELS, ML_PROCESSED  # noqa: E402
+from ML.auth_streamlit import (  # noqa: E402
+    SESSION_KEYS,
+    authenticate,
+    get_full_name,
+    get_role,
+    is_authenticated,
+    logout,
+)
 from ML.clustering_deploy import (  # noqa: E402
     FORM_OBJECT_METIER_MARKDOWN,
     filter_clustering_metrics_if_models_missing,
@@ -59,7 +67,7 @@ def _dw_connection_info() -> dict[str, str]:
 
 ASSETS = _REPO / "ML" / "assets"
 
-# Palette dashboard — thème clair, accents teal / cyan (figures modernes, bon contraste)
+# Palette dashboard — thème clair, teal accents / cyan (figures modernes, bon contraste)
 BRAND = {
     "deep": "#0d9488",
     "sky": "#14b8a6",
@@ -82,13 +90,13 @@ BRAND = {
     "border_soft": "rgba(13, 148, 136, 0.22)",
 }
 
-# Navigation (ordre : accueil → familles ML → récap en fin de parcours)
-PAGE_HOME = "Accueil"
-PAGE_CLASSIF = "Classification (C)"
-PAGE_REGR = "Régression (D)"
-PAGE_CLUSTER = "Clustering (E)"
-PAGE_TS = "Séries temporelles (F)"
-PAGE_RECAP = "Récapitulatif"
+# Navigation (order: home → prediction tools)
+PAGE_HOME    = "Home"
+PAGE_CLASSIF = "Booking Status"
+PAGE_REGR    = "Price Estimation"
+PAGE_CLUSTER = "Customer Segments"
+PAGE_TS      = "Trends & Forecast"
+PAGE_RECAP   = "Summary"
 PAGE_ORDER: tuple[str, ...] = (
     PAGE_HOME,
     PAGE_CLASSIF,
@@ -98,51 +106,68 @@ PAGE_ORDER: tuple[str, ...] = (
     PAGE_RECAP,
 )
 
-ML_INTEREST_MARKDOWN = """
-**Pourquoi le machine learning pour EventZilla ?**  
-Les données du **data warehouse** (réservations, finances agrégées, volumes) permettent d’**anticiper** les statuts et montants, de **segmenter** l’offre et de **suivre** les tendances mensuelles — sans remplacer le métier, mais pour **prioriser** et **illustrer** les scénarios dans un cadre pédagogique et reproductible.
+# ── Pages by role ────────────────────────────────────
+# Marketing (Ranim): customer segments + booking predictions
+# Finance (Naima): price estimation + trends
+# CRM (Anas): booking predictions + customer loyalty
+ROLE_PAGES: dict[str, tuple[str, ...]] = {
+    "marketing_manager": (PAGE_HOME, PAGE_CLUSTER, PAGE_CLASSIF),
+    "financial_manager": (PAGE_HOME, PAGE_REGR,    PAGE_TS),
+    "crm_manager":       (PAGE_HOME, PAGE_CLASSIF, PAGE_CLUSTER),
+}
 
-**Ce studio** centralise les modèles entraînés sur le même périmètre que vos notebooks (00→05) : testez-les ici avant toute mise en production.
+# Badges affichés dans la sidebar selon le rôle
+ROLE_LABELS: dict[str, str] = {
+    "marketing_manager": "📢 Marketing Manager",
+    "financial_manager": "💰 Finance Manager",
+    "crm_manager":       "🤝 Customer Relations Manager",
+}
+
+ML_INTEREST_MARKDOWN = """
+**Why machine learning for EventZilla?**  
+The **database** (bookings, aggregated finances, volumes) permettent d’**anticipate** les statuses and amounts, de **segment** l’offre et de **track** les monthly trends — without replacing business, mais pour **prioritize** et **illustrate** les scenarios in an educational framework and reproducible.
+
+**Ce studio** centralise les models trained on the same scope as your notebooks (00→05) : test them here before any production deployment.
 """
 
-# Textes « déploiement / test » — peu techniques, alignés data warehouse (enseignants & équipe)
+# Textes « déploiement / test » — peu techniques, alignés database (enseignants & équipe)
 DEPLOY_CLASSIF_MARKDOWN = """
-### À quoi sert cet écran ?
+### What is this screen for?
 
-**Objectif :** décrire **une situation d’activité EventZilla** telle qu’elle apparaît dans nos données (même logique que le DW) et voir **quel statut de réservation** le modèle retient comme le plus plausible.
+**Objectif :** décrire **une situation d’activity EventZilla** telle qu’elle apparaît dans nos data (même logique que le database) et voir **quel booking status** le Prediction System retient comme le plus plausible.
 
-Vous composez un **scénario** (niveau d’activité, période, ordre de grandeur des montants) ou vous partez **d’un cas réel** déjà présent dans le jeu préparé — le tout pour **tester le modèle** sans écrire de SQL.
+Vous composez un **scénario** (niveau d’activity, period, order of magnitude of amounts) ou vous partez **d’un real case** already present dans le prepared dataset — le tout pour **tester le Prediction System** sans écrire de SQL.
 """
 
 DEPLOY_REGR_MARKDOWN = """
-### À quoi sert cet écran ?
+### What is this screen for?
 
-**Objectif :** estimer **une valeur continue** du périmètre finance / performance (ex. montant, panier) à partir d’une situation **cohérente avec le data warehouse**.
+**Objectif :** estimer **une valeur continue** du scope finance / performance (ex. amount, panier) à partir d’une situation **cohérente avec le database**.
 
-Même principe que la classification : **scénario type** ou **ligne réelle** issue des données préparées, pour **valider la régression** sur nos indicateurs EventZilla.
+Même principe que la Status Prediction : **scénario type** ou **ligne réelle** issue des data préparées, pour **valider la Price Estimation** sur nos EventZilla indicators.
 """
 
-DEPLOY_TS_MARKDOWN = """### À quoi sert cet écran ?
+DEPLOY_TS_MARKDOWN = """### What is this screen for?
 
-**Objectif :** visualiser **l’évolution mensuelle** d’indicateurs agrégés (volume d’activité, chiffre d’affaires, panier moyen) **calculés depuis le data warehouse**, puis **projeter quelques mois** pour illustrer la dynamique observée.
+**Objectif :** visualiser **l’monthly evolution** d’aggregated indicators (volume d’activity, chiffre d’affaires, average basket) **calculated from le database**, puis **project a few months** pour illustrate la observed dynamics.
 
-**Ce que vous pouvez tester :**
-1. **Choisir l’indicateur** — volume d’activité, CA mensuel ou panier moyen.
-2. **Ajuster l’horizon** — de 1 à 12 mois de prévision.
-3. **Comparer visuellement** le train, la zone de validation et la prévision.
-4. **Lire les métriques** — RMSE, MAE, MAPE sur la fenêtre de test.
+**What you can test:**
+1. **Choisir l’indicateur** — volume d’activity, monthly revenue or average basket.
+2. **Ajuster l’horizon** — from 1 to 12 months forecast.
+3. **Visually compare** training, validation zone, and forecast.
+4. **Read the metrics** — RMSE, MAE, MAPE on the test window.
 
-**Modèles comparés :** **Holt** (lissage exponentiel avec tendance) vs **ARIMA** (autorégression + différenciation + moyenne mobile). Le **champion** est celui qui a le **RMSE le plus bas** sur la validation.
+**Modèles comparés :** **Trend Analysis** (exponential smoothing with trend) vs **Advanced Forecast** (autoregression + differencing + moving average). The **best model** is the one with the **lowest RMSE** on validation.
 """
 
 DEPLOY_SYNTH_MARKDOWN = """
-### Aide à la navigation
+### Navigation Help
 
-- **Accueil** : intérêt du ML pour EventZilla, **KPI** rapides, boutons vers les tests.
-- **Pages C à F** : un écran par famille de modèle (même logique que les notebooks).
-- **Récapitulatif** : **tableau unique** des champions / qualités (type livrable 05), sans surcharge.
+- **Home**: Why use AI for EventZilla, quick **KPIs**, buttons to tests.
+- **Analysis pages**: One screen per Prediction System type (same logic as notebooks).
+- **Summary**: **Single table** of best models and quality metrics, streamlined view.
 
-Les fichiers `metrics_*.json` dans `ML/models_artifacts/` alimentent les indicateurs et le tableau récapitulatif.
+The `metrics_*.json` files in `ML/models_artifacts/` feed the indicators and summary table.
 """
 
 
@@ -175,39 +200,39 @@ def section_header(title: str, subtitle: str | None = None) -> None:
 
 
 def champion_rationale(m: dict | None, fallback: str = "") -> str:
-    """Texte court expliquant le choix du modèle (champs optionnels dans les JSON métriques)."""
+    """Short text explaining Prediction System choice (optional fields in JSON metrics)."""
     if not m:
         return fallback or "—"
     for key in ("champion_rule", "rationale", "notes_champion", "model_notes"):
         v = m.get(key)
         if v:
             return str(v).strip()
-    return fallback or "Modèle retenu après comparaison sur le jeu de test (détail dans le notebook associé)."
+    return fallback or "Model selected after comparison on test set (details in associated notebook)."
 
 
 def deployment_context_card(
     critere: str,
-    cible: str,
+    Goal: str,
     objectif: str,
     kpi: str,
     modele: str,
-    pourquoi: str,
+    rationale: str,
     figure_note: str,
     *,
-    label_cible: str = "Cible (Y)",
-    label_kpi: str = "KPI / lecture métier",
-    label_figure: str = "Figure / indicateur à regarder",
+    label_cible: str = "Target (Y)",
+    label_kpi: str = "KPI / business reading",
+    label_figure: str = "Chart / indicator to view",
 ) -> None:
     """Bloc compact en tête des pages de test."""
     esc = html.escape
     st.markdown(
-        f'<div class="ez-deploy-context"><h4>Ce que teste cet écran</h4>'
+        f'<div class="ez-deploy-context"><h4>What this screen tests</h4>'
         f'<div class="ez-dc-grid">'
-        f'<div class="ez-dc-item"><span class="ez-dc-label">Critère</span>'
+        f'<div class="ez-dc-item"><span class="ez-dc-label">Criterion</span>'
         f'<span class="ez-dc-val">{esc(critere)}</span></div>'
         f'<div class="ez-dc-item"><span class="ez-dc-label">{esc(label_cible)}</span>'
-        f'<span class="ez-dc-val">{esc(cible)}</span></div>'
-        f'<div class="ez-dc-item"><span class="ez-dc-label">Modèle</span>'
+        f'<span class="ez-dc-val">{esc(Goal)}</span></div>'
+        f'<div class="ez-dc-item"><span class="ez-dc-label">Prediction System</span>'
         f'<span class="ez-dc-val">{esc(modele)}</span></div>'
         f'<div class="ez-dc-item"><span class="ez-dc-label">Objectif</span>'
         f'<span class="ez-dc-val">{esc(objectif)}</span></div>'
@@ -217,7 +242,7 @@ def deployment_context_card(
 
 
 st.set_page_config(
-    page_title="EventZilla ML — Studio",
+    page_title="EventZilla Analytics Dashboard",
     page_icon="EZ",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -233,7 +258,7 @@ def _resolve_logo_path() -> Path:
 
 
 def _inject_theme_css() -> None:
-    """Thème global clair : cartes nettes, accents teal, graphiques lisibles."""
+    """Thème global clair : cartes nettes, teal accents, graphiques lisibles."""
     st.markdown(
         """
         <style>
@@ -475,7 +500,7 @@ def _inject_theme_css() -> None:
             text-align: center;
         }
         .ez-out-panel p { font-size: 1rem; color: #64748b; max-width: 22rem; line-height: 1.55; }
-        /* Bandeau d’aide classification : pas de hauteur min. élevée (évite un « cadre vide ») */
+        /* Bandeau d’aide Status Prediction : pas de hauteur min. élevée (évite un « cadre vide ») */
         .ez-out-panel--hint { min-height: auto; align-items: flex-start; text-align: left; padding: 1rem 1.1rem; }
 
         .ez-panel {
@@ -572,7 +597,7 @@ _inject_theme_css()
 
 
 def _inject_page_accent(deep: str, main: str, soft: str) -> None:
-    """Thème de couleur dynamique par page — boutons, métriques, formulaires, expanders."""
+    """Dynamic color theme per page — buttons, metrics, forms, expanders."""
     st.markdown(
         f"""
         <style>
@@ -654,7 +679,7 @@ def classification_feature_columns() -> list[str] | None:
 
 @st.cache_data(show_spinner=False)
 def _dw_numeric_columns_all() -> list[str]:
-    """Toutes les colonnes numériques du DW (ordre stable), pour distinguer régression vs classification."""
+    """Toutes les colonnes numériques du database (ordre stable), pour distinguer Price Estimation vs Status Prediction."""
     pp = ML_PROCESSED / "dw_financial_wide.parquet"
     if not pp.is_file():
         return []
@@ -663,7 +688,7 @@ def _dw_numeric_columns_all() -> list[str]:
 
 
 def classification_form_column_names() -> frozenset[str]:
-    """Colonnes affichées dans le formulaire classification (hors id) — à ne pas dupliquer en régression."""
+    """Columns displayed in Booking Status form (excluding id) — not to duplicate in Price Estimation."""
     cols = classification_feature_columns()
     if not cols:
         return frozenset()
@@ -671,23 +696,23 @@ def classification_form_column_names() -> frozenset[str]:
 
 
 CLASSIF_MONTH_LABELS_FR = [
-    "Janvier",
-    "Février",
-    "Mars",
-    "Avril",
-    "Mai",
-    "Juin",
-    "Juillet",
-    "Août",
-    "Septembre",
-    "Octobre",
-    "Novembre",
-    "Décembre",
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
 ]
 
 
 def _classif_order_columns(cols: list[str]) -> list[str]:
-    """Met en tête période / montants utiles à la lecture métier, puis le reste."""
+    """Put period / amounts useful for business reading first, then the rest."""
     head = []
     for key in ("cal_year", "cal_month", "quarter", "final_price", "service_price", "event_budget"):
         if key in cols and key not in head:
@@ -707,7 +732,7 @@ def _classif_format_suggested_value(col: str, v: float) -> str:
 
 
 def classif_dropdown_suggestions(df: pd.DataFrame, col: str) -> list[tuple[str, float]]:
-    """Libellés + valeurs numériques alignées sur la distribution du jeu DW (suggestions)."""
+    """Libellés + valeurs numériques alignées sur la distribution du database set (suggestions)."""
     if col not in df.columns:
         return [("0", 0.0)]
     s = pd.to_numeric(df[col], errors="coerce").dropna()
@@ -715,13 +740,13 @@ def classif_dropdown_suggestions(df: pd.DataFrame, col: str) -> list[tuple[str, 
         return [("0", 0.0)]
     c = str(col).lower()
     if c == "cal_month":
-        return [(f"{CLASSIF_MONTH_LABELS_FR[i]} (mois {i + 1})", float(i + 1)) for i in range(12)]
+        return [(f"{CLASSIF_MONTH_LABELS_FR[i]} (month {i + 1})", float(i + 1)) for i in range(12)]
     if c == "quarter":
         return [
-            ("T1 — janvier à mars", 1.0),
-            ("T2 — avril à juin", 2.0),
-            ("T3 — juillet à septembre", 3.0),
-            ("T4 — octobre à décembre", 4.0),
+            ("Q1 — January to March", 1.0),
+            ("Q2 — April to June", 2.0),
+            ("Q3 — July to September", 3.0),
+            ("Q4 — October to December", 4.0),
         ]
     if c == "cal_year":
         u = sorted(pd.unique(s.round().astype(int)))
@@ -729,11 +754,11 @@ def classif_dropdown_suggestions(df: pd.DataFrame, col: str) -> list[tuple[str, 
             return [(str(int(y)), float(y)) for y in u]
         qs = (0.1, 0.25, 0.5, 0.75, 0.9)
         labs = (
-            "Année — bas (~10e percentile)",
-            "Année — bas (~25e)",
-            "Année — médiane",
-            "Année — haut (~75e)",
-            "Année — haut (~90e)",
+            "Year — low (~10th percentile)",
+            "Year — low (~25th)",
+            "Year — median",
+            "Year — high (~75th)",
+            "Year — high (~90th)",
         )
         out: list[tuple[str, float]] = []
         for lab, q in zip(labs, qs):
@@ -746,11 +771,11 @@ def classif_dropdown_suggestions(df: pd.DataFrame, col: str) -> list[tuple[str, 
         return [(f"Valeur observée — {_classif_format_suggested_value(col, float(x))}", float(x)) for x in u]
     qs = (0.1, 0.25, 0.5, 0.75, 0.9)
     labs_fr = (
-        "Très bas dans le DW (~10e %.)",
-        "Bas (~25e %.)",
-        "Typique — médiane",
-        "Élevé (~75e %.)",
-        "Très haut (~90e %.)",
+        "Very low in database (~10th %)",
+        "Low (~25th %)",
+        "Typical — median",
+        "High (~75th %)",
+        "Very high (~90th %)",
     )
     pairs: list[tuple[str, float]] = []
     for lab, q in zip(labs_fr, qs):
@@ -776,17 +801,17 @@ def _classif_field_group(col: str) -> str:
 
 def _classif_group_title(group: str) -> str:
     return {
-        "period": "Période & calendrier (données DW)",
-        "money": "Montants & indicateurs financiers",
-        "counts": "Volumes & compteurs",
-        "ids": "Identifiants dimension (DW)",
-        "ctx": "Contexte",
-        "other": "Autres variables du modèle",
+        "period": "Period & calendar (database data)",
+        "money": "Prices & Amounts",
+        "counts": "Quantities",
+        "ids": "Identifiants dimension (database)",
+        "ctx": "Context",
+        "other": "Autres variables du Prediction System",
     }.get(group, "Variables")
 
 
 def _classif_id_median_defaults(df: pd.DataFrame, cols: list[str]) -> dict[str, float]:
-    """Médianes sur le jeu préparé pour les colonnes id requises par le pipeline (non saisies à l’écran)."""
+    """Medians on prepared dataset for id columns required by Prediction System (non saisies à l’écran)."""
     out: dict[str, float] = {}
     for c in cols:
         if not _is_id_column(c) or c not in df.columns:
@@ -796,67 +821,75 @@ def _classif_id_median_defaults(df: pd.DataFrame, cols: list[str]) -> dict[str, 
     return out
 
 
-def safe_target_filename(target: str) -> str:
-    return "".join(ch if ch.isalnum() or ch in "_-" else "_" for ch in target)
+def safe_target_filename(Goal: str) -> str:
+    return "".join(ch if ch.isalnum() or ch in "_-" else "_" for ch in Goal)
 
 
 def regression_paths_and_targets(m: dict) -> tuple[list[str], str | None]:
-    primary = m.get("target")
+    # Accept both "Goal" and "target" field names
+    primary = m.get("Goal") or m.get("target")
     runs = m.get("regression_objectives") or []
     if runs:
-        targets = [r["target"] for r in runs]
+        targets = [r.get("Goal") or r.get("target") for r in runs if r.get("Goal") or r.get("target")]
         return targets, primary
     if primary:
         return [primary], primary
     return [], None
 
 
-def regression_model_path(m: dict, target: str) -> Path:
-    primary = m.get("target")
-    if target == primary:
-        return ML_MODELS / "rf_panier_kpi_pipeline.joblib"
-    return ML_MODELS / f"rf_regression_target_{safe_target_filename(target)}.joblib"
+def regression_model_path(m: dict, Goal: str) -> Path:
+    # Accept both "Goal" and "target" field names
+    primary = m.get("Goal") or m.get("target")
+    if Goal == primary:
+        # Check which model is the champion and load the correct file
+        champion = m.get("champion_model", "").lower()
+        if "ridge" in champion:
+            return ML_MODELS / "ridge_regression_primary.joblib"
+        else:
+            # Default to RF if not specified or if it's RandomForest
+            return ML_MODELS / "rf_panier_kpi_pipeline.joblib"
+    return ML_MODELS / f"rf_regression_target_{safe_target_filename(Goal)}.joblib"
 
 
 REGR_TARGET_LABEL_FR: dict[str, str] = {
-    "final_price": "Prix final (panier / commande)",
-    "service_price": "Prix prestataire",
-    "benchmark_avg_price": "Prix moyen de référence (benchmark)",
-    "event_budget": "Budget événement",
-    "commission_margin": "Marge commission (final − prestataire)",
+    "final_price": "Final price (basket / order)",
+    "service_price": "Provider price",
+    "benchmark_avg_price": "Average reference price (benchmark)",
+    "event_budget": "Event budget",
+    "commission_margin": "Commission margin (final − provider)",
 }
 
-# Cible unique exposée dans l’UI Streamlit (alignée sur le critère D — panier / prix final).
+# Goal unique exposée dans l’UI Streamlit (aligned with criterion D — basket / final price).
 REGR_UI_TARGET = "final_price"
-# Accent visuel régression (violet) — distinct de la classification (teal).
+# Accent visuel Price Estimation (violet) — distinct de la Status Prediction (teal).
 REGR_PAGE_ACCENT = "#7c3aed"
 REGR_PAGE_ACCENT_DEEP = "#6d28d9"
-# Clustering (E) — ambre / orange, distinct de la classification (teal) et de la régression (violet)
+# Customer Grouping (E) — ambre / orange, distinct de la Status Prediction (teal) et de la Price Estimation (violet)
 CLUSTER_PAGE_ACCENT = "#ea580c"
 CLUSTER_PAGE_ACCENT_DEEP = "#c2410c"
 CLUSTER_PAGE_ACCENT_SOFT = "#fff7ed"
 
 # Aligné sur ML/scripts/run_03_prediction_regression.py (TARGET_KPIS)
 REGR_KPI_TAG: dict[str, str] = {
-    "final_price": "panier_moyen_ca_sum_final_price",
-    "service_price": "prix_prestataire_structure_revenus",
-    "event_budget": "budget_evenement",
+    "final_price": "basket_average_revenue_sum_final_price",
+    "service_price": "provider_price_revenue_structure",
+    "event_budget": "event_budget",
 }
 
 
-def regression_infer_features(df: pd.DataFrame, target: str) -> list[str]:
-    """Même ensemble de prédicteurs que run_03 : numériques sauf la cible et fact_finance_id."""
-    if target not in df.columns:
+def regression_infer_features(df: pd.DataFrame, Goal: str) -> list[str]:
+    """Même ensemble de Input Factors que run_03 : numériques sauf la Goal et fact_finance_id."""
+    if Goal not in df.columns:
         return []
     return [
         c
         for c in df.select_dtypes(include=[np.number]).columns
-        if c != target and c != "fact_finance_id"
+        if c != Goal and c != "fact_finance_id"
     ]
 
 
 def pipeline_feature_importance_dict(pipe, feature_names: list[str]) -> dict[str, float] | None:
-    """Importances Random Forest alignées sur l’ordre des colonnes d’entraînement."""
+    """Importances Smart Decision System alignées sur l’ordre des colonnes d’Learning."""
     if pipe is None or not hasattr(pipe, "named_steps"):
         return None
     reg = pipe.named_steps.get("reg")
@@ -873,7 +906,7 @@ def regression_form_column_order(
     pipe,
     features_full: list[str],
 ) -> tuple[list[str], dict[str, float] | None]:
-    """Ordre des champs : importance RF décroissante ; sinon heuristique « prix / budget » d’abord (≠ classification)."""
+    """Field order : decreasing RF importance ; otherwise heuristic « prix / budget » d’abord (≠ Status Prediction)."""
     imp = pipeline_feature_importance_dict(pipe, features_full)
     if imp:
         ordered = sorted(cols_form, key=lambda c: imp.get(c, 0.0), reverse=True)
@@ -919,12 +952,12 @@ def _regr_num_bounds_step(
 
 
 def _regr_benchmark_price_dropdown(col: str) -> bool:
-    """`benchmark_avg_price` (ou alias) : saisie par liste déroulante de quantiles / valeurs DW."""
+    """`benchmark_avg_price` (or alias) : input by dropdown of quantiles / database values."""
     n = str(col).lower().replace(" ", "_")
     return n in ("benchmark_avg_price", "benchmark_price")
 
 
-# Nombre minimal de champs affichés (saisie utilisateur) — évite un formulaire réduit à une seule variable.
+# Minimum number of displayed fields (user input) — avoids form reduced to single variable.
 REGR_MANUAL_FIELDS_MIN = 6
 REGR_MANUAL_FIELDS_TARGET = 10
 REGR_MANUAL_FIELDS_MAX = 12
@@ -932,8 +965,8 @@ REGR_MANUAL_FIELDS_MAX = 12
 
 def regression_ui_manual_columns(ordered: list[str]) -> list[str]:
     """
-    Colonnes de saisie régression : d’abord **hors** formulaire classification, puis complément
-    jusqu’à un **minimum** de champs (ordre importance du modèle), même si chevauchement avec la classif.
+    Price Estimation input columns : d’abord **hors** formulaire Status Prediction, then complement
+    jusqu’à un **minimum** de fields (Prediction System importance order), even if overlap with classification.
     """
     if not ordered:
         return []
@@ -955,20 +988,20 @@ def regression_ui_manual_columns(ordered: list[str]) -> list[str]:
         out.append(c)
         seen.add(c)
 
-    # 1) Prédicteurs hors périmètre classification (importance RF / heuristique).
+    # 1) Input Factors hors scope Status Prediction (importance RF / heuristique).
     for c in ordered:
         _push_disjoint(c)
         if len(out) >= REGR_MANUAL_FIELDS_MAX:
             return out[:REGR_MANUAL_FIELDS_MAX]
 
-    # 2) Colonnes « queue du schéma » DW (index ≥ 21), toujours hors doublon classif.
+    # 2) Columns « queue du schéma » database (index ≥ 21), toujours hors doublon classif.
     for c in ordered:
         if c in tail_from_21:
             _push_disjoint(c)
         if len(out) >= REGR_MANUAL_FIELDS_MAX:
             return out[:REGR_MANUAL_FIELDS_MAX]
 
-    # 3) Complément : au moins REGR_MANUAL_FIELDS_MIN champs (souvent jusqu’à 10), même si présents en classification.
+    # 3) Complément : at least REGR_MANUAL_FIELDS_MIN fields (souvent jusqu’à 10), even if present en Status Prediction.
     _cap = min(len(ordered), REGR_MANUAL_FIELDS_MAX)
     fill_to = min(
         _cap,
@@ -980,7 +1013,7 @@ def regression_ui_manual_columns(ordered: list[str]) -> list[str]:
             if len(out) >= fill_to:
                 break
 
-    # 4) Benchmark en tête (liste déroulante) si présent dans la liste affichée.
+    # 4) Reference en tête (dropdown) if present dans la liste affichée.
     bm = "benchmark_avg_price"
     if bm in out:
         out = [bm] + [x for x in out if x != bm]
@@ -989,7 +1022,7 @@ def regression_ui_manual_columns(ordered: list[str]) -> list[str]:
     if out:
         return out[:REGR_MANUAL_FIELDS_MAX]
 
-    # 5) Dernier recours : parcours DW après la 20e colonne.
+    # 5) Dernier recours : parcours database after la 20e colonne.
     for c in num_all[20:]:
         if c in ordered:
             _push_any(c)
@@ -1006,11 +1039,11 @@ def regr_form_section_blocks(
     ordered: list[str],
     imp_map: dict[str, float] | None,
 ) -> list[tuple[str, list[str]]]:
-    """Deux blocs : variables les plus influentes, puis le reste (libellés distincts de la classification)."""
+    """Deux blocs : variables les plus influentes, then the rest (libellés distincts de la Status Prediction)."""
     if not ordered:
         return []
     if len(ordered) == 1:
-        return [("Prédicteurs du modèle (prix final)", ordered)]
+        return [("Prediction System Input Factors (final price)", ordered)]
     if imp_map and len(ordered) >= 2:
         tot = sum(imp_map.get(c, 0.0) for c in ordered)
         if tot > 0:
@@ -1025,63 +1058,73 @@ def regr_form_section_blocks(
                 cut = max(1, len(ordered) // 2)
             cut = max(1, min(len(ordered) - 1, cut))
             return [
-                ("Variables les plus influentes sur le prix final (forêt aléatoire)", ordered[:cut]),
-                ("Autres prédicteurs du modèle", ordered[cut:]),
+                ("Most influential variables on final price (random forest)", ordered[:cut]),
+                ("Other model input factors", ordered[cut:]),
             ]
     cut = max(1, (len(ordered) + 1) // 2)
     return [
-        ("Montants, budget & références (à renseigner en priorité)", ordered[:cut]),
-        ("Calendrier & autres dimensions", ordered[cut:]),
+        ("Amounts, budget & references (fill in priority)", ordered[:cut]),
+        ("Calendar & other dimensions", ordered[cut:]),
     ]
 
 
-def regression_run_for_target(m: dict, target: str, df_pq: pd.DataFrame | None = None) -> dict:
-    """Métadonnées (features, KPI) pour une cible ; repli comme run_03 si pas de regression_objectives."""
+def regression_run_for_target(m: dict, Goal: str, df_pq: pd.DataFrame | None = None) -> dict:
+    """Métadata (Factors, KPI) pour une Goal ; repli comme run_03 si pas de regression_objectives."""
     for r in m.get("regression_objectives") or []:
-        if r.get("target") == target:
+        if r.get("Goal") == Goal or r.get("target") == Goal:
             return r
-    if m.get("target") == target:
+    # Accept both "Goal" and "target" field names
+    target_field = m.get("Goal") or m.get("target")
+    if target_field == Goal:
+        # Accept both "Factors" and "features" field names
+        factors = m.get("Factors") or m.get("features") or []
         return {
-            "target": target,
-            "features": m.get("features") or [],
+            "Goal": Goal,
+            "Factors": factors,
             "kpi_alignment": m.get("kpi_alignment"),
         }
-    if df_pq is not None and target in df_pq.columns:
-        feats = regression_infer_features(df_pq, target)
+    if df_pq is not None and Goal in df_pq.columns:
+        feats = regression_infer_features(df_pq, Goal)
         return {
-            "target": target,
-            "features": feats,
-            "kpi_alignment": REGR_KPI_TAG.get(target, ""),
+            "Goal": Goal,
+            "Factors": feats,
+            "kpi_alignment": REGR_KPI_TAG.get(Goal, ""),
         }
     return {}
 
 
-def format_regression_target_choice(target: str) -> str:
-    """Libellé pour liste déroulante des cibles Y."""
-    lab = REGR_TARGET_LABEL_FR.get(target, target.replace("_", " "))
-    return f"{lab} — `{target}`"
+def format_regression_target_choice(Goal: str) -> str:
+    """Libellé pour dropdown des cibles Y."""
+    lab = REGR_TARGET_LABEL_FR.get(Goal, Goal.replace("_", " "))
+    return f"{lab} — `{Goal}`"
 
 
-def regression_metrics_for_target(m: dict, target: str) -> dict[str, float | None]:
-    """RMSE / MAE / R² propres à une cible si présents dans `regression_objectives`."""
+def regression_metrics_for_target(m: dict, Goal: str) -> dict[str, float | None]:
+    """Prediction Error / Average Error / Correct Predictions Score propres à une Goal if presents dans `regression_objectives`."""
     for r in m.get("regression_objectives") or []:
-        if r.get("target") == target:
+        if r.get("Goal") == Goal or r.get("target") == Goal:
             return {
-                "rmse": r.get("rmse"),
-                "mae": r.get("mae"),
-                "r2": r.get("r2"),
+                "Prediction Error": r.get("Prediction Error") or r.get("rmse"),
+                "Average Error": r.get("Average Error") or r.get("mae"),
+                "Correct Predictions": r.get("Correct Predictions") or r.get("r2"),
             }
-    if m.get("target") == target:
+    # Accept both "Goal" and "target" field names
+    target_field = m.get("Goal") or m.get("target")
+    if target_field == Goal:
         er = extract_regression_metrics(m)
-        return {"rmse": er.get("rmse"), "mae": er.get("mae"), "r2": er.get("r2")}
-    return {"rmse": None, "mae": None, "r2": None}
+        return {
+            "Prediction Error": er.get("Prediction Error"),
+            "Average Error": er.get("Average Error"),
+            "Correct Predictions": er.get("Correct Predictions")
+        }
+    return {"Prediction Error": None, "Average Error": None, "Correct Predictions": None}
 
 
 def extract_classification_metrics(m: dict) -> dict:
     if "test_metrics_champion" in m:
         return m["test_metrics_champion"]
     return {
-        "accuracy": m.get("accuracy"),
+        "Correct Predictions": m.get("Correct Predictions"),
         "f1_weighted": m.get("f1_weighted"),
         "roc_auc": m.get("roc_auc"),
     }
@@ -1089,30 +1132,36 @@ def extract_classification_metrics(m: dict) -> dict:
 
 def extract_regression_metrics(m: dict) -> dict:
     if "test_champion" in m:
-        return m["test_champion"]
+        tc = m["test_champion"]
+        # Map the actual metric names to the display names
+        return {
+            "Prediction Error": tc.get("rmse"),
+            "Average Error": tc.get("mae"),
+            "Correct Predictions": tc.get("r2"),
+        }
     return {
-        "rmse": m.get("rmse"),
-        "mae": m.get("mae"),
-        "r2": m.get("r2"),
+        "Prediction Error": m.get("Prediction Error") or m.get("rmse"),
+        "Average Error": m.get("Average Error") or m.get("mae"),
+        "Correct Predictions": m.get("Correct Predictions") or m.get("r2"),
     }
 
 
 def _timeseries_rmse(mt: dict) -> float | None:
     tc = mt.get("test_champion")
-    if isinstance(tc, dict) and tc.get("rmse") is not None:
-        return float(tc["rmse"])
+    if isinstance(tc, dict) and tc.get("Prediction Error") is not None:
+        return float(tc["Prediction Error"])
     th = mt.get("test_holt") or {}
-    if th.get("rmse") is not None:
-        return float(th["rmse"])
+    if th.get("Prediction Error") is not None:
+        return float(th["Prediction Error"])
     if mt.get("rmse_holdout") is not None:
         return float(mt["rmse_holdout"])
     return None
 
 
 SERIES_COLUMN_LABELS_FR = {
-    "nb_fact_rows": "Volume d’activité (lignes de faits DW / mois)",
-    "revenue_sum": "CA mensuel agrégé (somme des montants)",
-    "avg_final_price": "Panier moyen mensuel",
+    "nb_fact_rows": "Volume d’activity (fact rows database / month)",
+    "revenue_sum": "Aggregated monthly revenue (sum of amounts)",
+    "avg_final_price": "Monthly average basket",
 }
 
 
@@ -1122,7 +1171,7 @@ def _plotly_x_datetime(value) -> object:
 
 
 def clustering_feature_names_for_model(km, features_json_name: str | None = None) -> list[str] | None:
-    """Noms de colonnes alignés sur les centres K-Means (sklearn ou fichier optionnel)."""
+    """Noms de colonnes alignés sur les centres Customer Grouping (sklearn ou fichier optional)."""
     fn = getattr(km, "feature_names_in_", None)
     if fn is not None and len(fn) > 0:
         return [str(x) for x in fn]
@@ -1130,19 +1179,19 @@ def clustering_feature_names_for_model(km, features_json_name: str | None = None
     path = ML_MODELS / fname
     if path.is_file():
         raw = load_json(path)
-        if isinstance(raw, dict) and raw.get("features"):
-            return [str(x) for x in raw["features"]]
+        if isinstance(raw, dict) and raw.get("Factors"):
+            return [str(x) for x in raw["Factors"]]
         if isinstance(raw, list):
             return [str(x) for x in raw]
     return None
 
 
-@st.cache_data(ttl=300, show_spinner="Connexion au DW et chargement des séries…")
+@st.cache_data(ttl=300, show_spinner="Connecting to database and loading series…")
 def fetch_dw_timeseries_dataframe(cache_bust: int = 0) -> tuple[pd.DataFrame | None, str | None]:
-    """Exécute la même requête que ``run_04_time_series.py`` sur le DW.
+    """Exécute la même requête que ``run_04_time_series.py`` sur le database.
 
-    ``cache_bust`` permet d’invalider le cache (bouton « Recharger »).
-    Retourne ``(dataframe, None)`` en cas de succès, ou ``(None, message_erreur)``.
+    ``cache_bust`` permet d’invalider le cache (bouton « Reload »).
+    Retourne ``(dataframe, None)`` en cas de succès, ou ``(None, message_error)``.
     """
     try:
         from ML.ml_paths import get_sql_engine, read_dw_sql, sql_engine_init_error
@@ -1153,12 +1202,12 @@ def fetch_dw_timeseries_dataframe(cache_bust: int = 0) -> tuple[pd.DataFrame | N
             err = sql_engine_init_error()
             return None, (
                 err
-                or "Moteur SQLAlchemy non créé — vérifiez pyodbc, sqlalchemy, et les variables "
+                or "SQLAlchemy engine not created — check pyodbc, sqlalchemy, and variables "
                 "``EVENTZILLA_SQL_*`` (voir ``ML/ml_paths.py``)."
             )
         df = read_dw_sql(SQL_ML_TIME_SERIES_RESERVATIONS, eng)
         if df is None or len(df) == 0:
-            return None, "La requête séries a renvoyé 0 ligne — vérifiez le périmètre DW."
+            return None, "Series query returned 0 rows — check database scope."
         return df, None
     except Exception as e:
         return None, f"{type(e).__name__}: {e}"
@@ -1171,7 +1220,7 @@ def test_dw_sql_connection() -> tuple[bool, str, pd.DataFrame | None]:
 
         eng = get_sql_engine()
         if eng is None:
-            return False, sql_engine_init_error() or "Engine indisponible.", None
+            return False, sql_engine_init_error() or "Engine unavailable.", None
         df = read_dw_sql("SELECT DB_NAME() AS base_dw, @@SERVERNAME AS serveur, GETDATE() AS horloge_sql", eng)
         return True, "Connexion OK.", df
     except Exception as e:
@@ -1187,12 +1236,12 @@ def build_champions_table_rows(mc: dict | None, mr: dict | None, mk: dict | None
             return "—"
         cm = extract_classification_metrics(m)
         parts = []
-        if cm.get("accuracy") is not None:
-            parts.append(f"Acc={cm['accuracy']:.3f}")
+        if cm.get("Correct Predictions") is not None:
+            parts.append(f"Acc={cm['Correct Predictions']:.3f}")
         if cm.get("f1_weighted") is not None:
-            parts.append(f"F1={cm['f1_weighted']:.3f}")
+            parts.append(f"Balance Score={cm['f1_weighted']:.3f}")
         if cm.get("roc_auc") is not None:
-            parts.append(f"AUC={cm['roc_auc']:.3f}")
+            parts.append(f"Quality Score={cm['roc_auc']:.3f}")
         return " · ".join(parts) if parts else "—"
 
     def qrg(m: dict | None) -> str:
@@ -1200,16 +1249,16 @@ def build_champions_table_rows(mc: dict | None, mr: dict | None, mk: dict | None
             return "—"
         rm = extract_regression_metrics(m)
         parts = []
-        if rm.get("rmse") is not None:
-            parts.append(f"RMSE={rm['rmse']:.4f}")
-        if rm.get("r2") is not None:
-            parts.append(f"R²={rm['r2']:.4f}")
+        if rm.get("Prediction Error") is not None:
+            parts.append(f"Prediction Error={rm['Prediction Error']:.4f}")
+        if rm.get("Correct Predictions") is not None:
+            parts.append(f"Correct Predictions Score={rm['Correct Predictions']:.4f}")
         return " · ".join(parts) if parts else "—"
 
     def qclust(m: dict | None) -> str:
         if not m:
             return "—"
-        sil = m.get("silhouette_holdout") or m.get("silhouette")
+        sil = m.get("silhouette_holdout") or m.get("Quality Score")
         dbk = m.get("davies_bouldin_kmeans")
         dba = m.get("davies_bouldin_agg")
         parts = []
@@ -1228,8 +1277,8 @@ def build_champions_table_rows(mc: dict | None, mr: dict | None, mk: dict | None
         if not isinstance(tc, dict):
             tc = {}
         parts = []
-        if tc.get("rmse") is not None:
-            parts.append(f"RMSE={tc['rmse']:.2f}")
+        if tc.get("Prediction Error") is not None:
+            parts.append(f"Prediction Error={tc['Prediction Error']:.2f}")
         if tc.get("mape") is not None:
             parts.append(f"MAPE≈{tc['mape']:.2f}%")
         return " · ".join(parts) if parts else "—"
@@ -1238,43 +1287,43 @@ def build_champions_table_rows(mc: dict | None, mr: dict | None, mk: dict | None
         k = mk.get("k", "?")
         rows.append(
             {
-                "Critère": "E",
-                "Domaine": "Clustering",
-                "Cible (Y)": f"k={k} segments (features perf. DW standardisées)",
-                "Champion": mk.get("model_primary") or mk.get("model") or "KMeans",
-                "Benchmark": mk.get("model_secondary") or "Agglomerative (Ward)",
-                "Règle de choix": "Silhouette (holdout) + Davies-Bouldin",
-                "Qualité": qclust(mk),
+                "Criterion": "E",
+                "Domain": "Customer Segmentation",
+                "Target (Y)": f"k={k} segments (standardized database perf. factors)",
+                "Best System": mk.get("model_primary") or mk.get("Prediction System") or "KMeans",
+                "Reference": mk.get("model_secondary") or "Agglomerative (Ward)",
+                "Selection Rule": "Quality Score (holdout) + Separation Score",
+                "Quality": qclust(mk),
                 "KPI": mk.get("kpi_alignment", "—"),
                 "Fichier": "metrics_clustering.json",
             }
         )
     if mc:
-        y = "Statut réservation (multi-classes)"
+        y = "Booking status (multi-class)"
         rows.append(
             {
-                "Critère": "C",
-                "Domaine": "Classification",
-                "Cible (Y)": y,
-                "Champion": mc.get("champion_model") or "RandomForest",
-                "Benchmark": "Régression logistique (cf. notebook)",
-                "Règle de choix": "Accuracy / F1 / ROC-AUC (test)",
-                "Qualité": qcl(mc),
+                "Criterion": "C",
+                "Domain": "Booking Status",
+                "Target (Y)": y,
+                "Best System": mc.get("champion_model") or "RandomForest",
+                "Reference": "Price Estimation logistique (cf. notebook)",
+                "Selection Rule": "Correct Predictions / Balance Score / ROC-Quality Score (test)",
+                "Quality": qcl(mc),
                 "KPI": mc.get("kpi_alignment", "—"),
                 "Fichier": "metrics_classification.json",
             }
         )
     if mr:
-        tgt = mr.get("target") or "final_price"
+        tgt = mr.get("Goal") or "final_price"
         rows.append(
             {
-                "Critère": "D",
-                "Domaine": "Régression",
-                "Cible (Y)": str(tgt),
-                "Champion": mr.get("champion_model") or "Ridge / RF (cf. JSON)",
-                "Benchmark": "Modèle alternatif (cf. notebook 03)",
-                "Règle de choix": "RMSE minimal sur test (CV amont)",
-                "Qualité": qrg(mr),
+                "Criterion": "D",
+                "Domain": "Price Estimation",
+                "Target (Y)": str(tgt),
+                "Best System": mr.get("champion_model") or "Ridge / RF (cf. JSON)",
+                "Reference": "Prediction System alternatif (cf. notebook 03)",
+                "Selection Rule": "Prediction Error minimal sur test (Validation amont)",
+                "Quality": qrg(mr),
                 "KPI": mr.get("kpi_alignment", "—"),
                 "Fichier": "metrics_regression.json",
             }
@@ -1284,13 +1333,13 @@ def build_champions_table_rows(mc: dict | None, mr: dict | None, mk: dict | None
         expl = mt.get("target_column_explained") or SERIES_COLUMN_LABELS_FR.get(ser, ser)
         rows.append(
             {
-                "Critère": "F",
-                "Domaine": "Séries temporelles",
-                "Cible (Y)": f"{ser} — {expl[:80]}…" if len(str(expl)) > 80 else f"{ser} — {expl}",
-                "Champion": mt.get("champion_model") or mt.get("model") or "Holt / ES",
-                "Benchmark": "ARIMA",
-                "Règle de choix": mt.get("champion_rule") or "RMSE minimal holdout",
-                "Qualité": qts(mt),
+                "Criterion": "F",
+                "Domain": "Trends & Forecast",
+                "Target (Y)": f"{ser} — {expl[:80]}…" if len(str(expl)) > 80 else f"{ser} — {expl}",
+                "Best System": mt.get("champion_model") or mt.get("Prediction System") or "Trend Analysis / ES",
+                "Reference": "Advanced Forecast",
+                "Selection Rule": mt.get("champion_rule") or "Prediction Error minimal holdout",
+                "Quality": qts(mt),
                 "KPI": mt.get("kpi_alignment", "—"),
                 "Fichier": "metrics_timeseries.json",
             }
@@ -1311,7 +1360,7 @@ def _plotly_layout(**kwargs: object) -> dict:
 
 
 def fig_classification_empty_state_demo(class_names: list[str]) -> tuple[go.Figure, go.Figure]:
-    """Barres horizontales + jauge d'aperçu (répartition fictive, pas une inférence)."""
+    """Barres horizontales + jauge d'preview (fictitious distribution, pas une inférence)."""
     names = [str(x) for x in class_names] if class_names else ["confirmed", "pending", "cancelled"]
     n = max(len(names), 1)
     eq = 100.0 / n
@@ -1337,9 +1386,9 @@ def fig_classification_empty_state_demo(class_names: list[str]) -> tuple[go.Figu
             height=max(220, 52 + len(names) * 34),
             margin=dict(l=min(220, max(96, 12 + lmax * 7)), r=36, t=56, b=40),
             title=dict(
-                text="Probabilités par statut — aperçu du graphique",
+                text="Probabilities by status — chart preview",
                 subtitle=dict(
-                    text="Illustration équiprobable ; les vraies valeurs apparaissent après « Prédire ».",
+                    text="Equiprobable illustration ; true values appear after « Predict ».",
                     font=dict(size=12, color=BRAND["muted"]),
                 ),
                 font=dict(size=16, color=BRAND["deep"]),
@@ -1357,7 +1406,7 @@ def fig_classification_empty_state_demo(class_names: list[str]) -> tuple[go.Figu
             mode="gauge+number",
             value=float(eq),
             number=dict(suffix=" %", font=dict(size=26, color=BRAND["muted"])),
-            title=dict(text="Confiance (probabilité max.) — aperçu", font=dict(size=14, color=BRAND["muted"])),
+            title=dict(text="Confidence (max. probability) — preview", font=dict(size=14, color=BRAND["muted"])),
             gauge=dict(
                 axis=dict(range=[0, 100]),
                 bar=dict(color="rgba(13, 148, 136, 0.45)"),
@@ -1383,15 +1432,15 @@ def fig_classification_empty_state_demo(class_names: list[str]) -> tuple[go.Figu
 
 def fig_regression_distribution_plot(
     df: pd.DataFrame,
-    target: str,
+    Goal: str,
     pred: float | None = None,
     *,
     accent: str | None = None,
 ) -> go.Figure | None:
-    """Histogramme de la cible sur le jeu préparé ; ligne de prédiction dans la couleur du panneau."""
-    if target not in df.columns:
+    """Histogramme de la Goal sur le prepared dataset ; ligne de prédiction dans la couleur du panneau."""
+    if Goal not in df.columns:
         return None
-    y = pd.to_numeric(df[target], errors="coerce").dropna()
+    y = pd.to_numeric(df[Goal], errors="coerce").dropna()
     if len(y) < 2:
         return None
     hist_color = accent or BRAND["deep"]
@@ -1400,7 +1449,7 @@ def fig_regression_distribution_plot(
         go.Histogram(
             x=y,
             nbinsx=nb,
-            name="Observations DW",
+            name="Observations database",
             marker=dict(color=hist_color, opacity=0.72),
         )
     )
@@ -1409,7 +1458,7 @@ def fig_regression_distribution_plot(
         x=med,
         line_dash="dot",
         line_color=BRAND["muted"],
-        annotation_text="Médiane (DW)",
+        annotation_text="Médiane (database)",
         annotation_position="top",
     )
     if pred is not None:
@@ -1420,7 +1469,7 @@ def fig_regression_distribution_plot(
             annotation_text="Prédiction",
             annotation_position="top left",
         )
-    tit = REGR_TARGET_LABEL_FR.get(target, target)
+    tit = REGR_TARGET_LABEL_FR.get(Goal, Goal)
     title_color = accent or BRAND["deep"]
     fig.update_layout(
         **_plotly_layout(
@@ -1444,7 +1493,7 @@ def fig_regression_importance_plot(
     *,
     accent: str | None = None,
 ) -> go.Figure | None:
-    """Barres horizontales d’importances Random Forest (si disponibles)."""
+    """Barres horizontales d’importances Smart Decision System (si disponibles)."""
     reg = None
     if hasattr(pipe, "named_steps"):
         reg = pipe.named_steps.get("reg")
@@ -1484,19 +1533,19 @@ def fig_regression_importance_plot(
 
 
 def _recap_html_table(df: pd.DataFrame) -> str:
-    """Génère un tableau HTML stylé pour la page récapitulatif."""
+    """Génère un tableau HTML stylé pour la page summary."""
     if df.empty:
         return "<p style='color:#64748b;'>Aucune donnée disponible.</p>"
 
     accent_map = {"E": "#ea580c", "C": "#10b981", "D": "#8b5cf6", "F": "#f59e0b"}
     rows_html = []
     for _, row in df.iterrows():
-        crit = str(row.get("Critère", ""))
+        crit = str(row.get("Criterion", ""))
         color = accent_map.get(crit, "#6366f1")
         cells = "".join(
             f"<td style='padding:0.65rem 0.85rem;border-bottom:1px solid #e2e8f0;"
             f"font-size:0.88rem;color:#334155;'>{html.escape(str(row[c]))}</td>"
-            for c in df.columns if c != "Critère"
+            for c in df.columns if c != "Criterion"
         )
         rows_html.append(
             f"<tr style='background:#ffffff;'>"
@@ -1532,7 +1581,7 @@ def _default_missing(feat: str, df_pq: pd.DataFrame | None) -> float:
 
 
 def _is_id_column(name: str) -> bool:
-    """Clés dimension / identifiants DW — jamais proposés aux formulaires métier (remplissage automatique si requis par le modèle)."""
+    """Dimension keys / database identifiers — never offered in business forms (automatic filling if required by Prediction System)."""
     n = name.lower().replace(" ", "_")
     return n.startswith("id_") or n.endswith("_id") or n == "id" or n in (
         "id_date",
@@ -1547,7 +1596,7 @@ def _is_price_column(name: str) -> bool:
     n = name.lower()
     return any(
         x in n
-        for x in ("price", "budget", "margin", "revenue", "ca_", "montant")
+        for x in ("price", "budget", "margin", "revenue", "ca_", "amount")
     )
 
 
@@ -1664,13 +1713,69 @@ NAV_COLORS: dict[str, str] = {
     PAGE_REGR: "#8b5cf6",
     PAGE_CLUSTER: "#ea580c",
     PAGE_TS: "#f59e0b",
-    PAGE_RECAP: "#6366f1",
 }
+
+
+def _render_login_screen() -> None:
+    """
+    Display login screen et authentifie l'utilisateur
+    via ses identifiants SQL Server (créés dans SSMS).
+    Stocke le résultat dans st.session_state.
+    """
+    st.markdown(
+        """
+        <div style="max-width:420px; margin:60px auto 0; padding:2.5rem 2.5rem 2rem;
+                    background:#ffffff; border-radius:1.2rem;
+                    box-shadow:0 4px 32px rgba(13,148,136,0.13);">
+            <div style="text-align:center; margin-bottom:1.6rem;">
+                <span style="font-size:2.8rem;">🎟️</span>
+                <h2 style="margin:.4rem 0 .2rem; color:#0d9488; font-size:1.6rem;">
+                    EventZilla ML Studio
+                </h2>
+                <p style="color:#64748b; font-size:.92rem; margin:0;">
+                    Connectez-vous avec vos identifiants SQL Server
+                </p>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Centered form
+    col_l, col_c, col_r = st.columns([1, 2, 1])
+    with col_c:
+        with st.form("ez_login_form", clear_on_submit=False):
+            login    = st.text_input("Login SQL Server", placeholder="ex : ranim_chikhrouhou")
+            password = st.text_input("Mot de passe",     type="password")
+            submitted = st.form_submit_button("Se connecter", use_container_width=True, type="primary")
+
+        if submitted:
+            with st.spinner("Vérification des identifiants SQL Server…"):
+                ok, err_msg, user_data = authenticate(login, password)
+
+            if ok:
+                st.session_state[SESSION_KEYS["authenticated"]] = True
+                st.session_state[SESSION_KEYS["login"]]         = user_data["login"]
+                st.session_state[SESSION_KEYS["role"]]          = user_data["role"]
+                st.session_state[SESSION_KEYS["full_name"]]     = user_data["full_name"]
+                st.session_state[SESSION_KEYS["email"]]         = user_data["email"]
+                # Page d'accueil par défaut after login
+                st.session_state["nav_page"] = PAGE_HOME
+                st.rerun()
+            else:
+                st.error(f"❌ {err_msg}")
+
+        st.markdown(
+            "<p style='text-align:center; color:#94a3b8; font-size:.8rem; margin-top:.8rem;'>"
+            "Identifiants créés dans SSMS — DW_eventzella</p>",
+            unsafe_allow_html=True,
+        )
 
 
 def sidebar_brand_and_nav() -> str:
     if "nav_page" not in st.session_state:
         st.session_state.nav_page = PAGE_HOME
+
     lp = _resolve_logo_path()
     if lp.is_file():
         st.sidebar.image(str(lp), use_container_width=True)
@@ -1678,12 +1783,50 @@ def sidebar_brand_and_nav() -> str:
         '<div class="ez-sidebar-brand">EventZilla ML Studio</div>',
         unsafe_allow_html=True,
     )
+
+    # ── Infos utilisateur connecté ───────────────────────────────
+    role      = get_role(st.session_state)
+    full_name = get_full_name(st.session_state)
+    role_label = ROLE_LABELS.get(role, role)
+
+    st.sidebar.markdown(
+        f"""
+        <div style="background:#f0fdfa; border:1px solid #99f6e4;
+                    border-radius:.7rem; padding:.7rem .9rem; margin-bottom:.5rem;">
+            <div style="font-weight:700; color:#0d9488; font-size:.95rem;">{full_name}</div>
+            <div style="color:#64748b; font-size:.82rem;">{role_label}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # ── Navigation filtrée par rôle ──────────────────────────────
     st.sidebar.markdown("---")
+    allowed_pages = ROLE_PAGES.get(role, PAGE_ORDER)
+
     for pg in PAGE_ORDER:
-        if st.sidebar.button(pg, key=f"nav_{pg}", use_container_width=True,
-                             type="primary" if st.session_state.nav_page == pg else "secondary"):
+        if pg not in allowed_pages:
+            continue  # page non autorisée pour ce rôle → masquée
+        is_active = (st.session_state.nav_page == pg)
+        if st.sidebar.button(
+            pg,
+            key=f"nav_{pg}",
+            use_container_width=True,
+            type="primary" if is_active else "secondary",
+        ):
             st.session_state.nav_page = pg
             st.rerun()
+
+    # ── Bouton déconnexion ───────────────────────────────────────
+    st.sidebar.markdown("---")
+    if st.sidebar.button("🚪 Log out", use_container_width=True):
+        logout(st.session_state)
+        st.rerun()
+
+    # Sécurité : si la page en cours n'est plus autorisée, revenir à l'accueil
+    if st.session_state.nav_page not in allowed_pages:
+        st.session_state.nav_page = PAGE_HOME
+
     return st.session_state.nav_page
 
 
@@ -1752,20 +1895,20 @@ def result_block(title: str, body_html: str, *, variant: str | None = None) -> N
 def fig_metrics_overview(mc: dict | None, mr: dict | None, mk: dict | None) -> go.Figure:
     names, values, colors = [], [], []
     for label, m, color in (
-        ("Classif. F1", mc, BRAND["deep"]),
-        ("Régr. R²", mr, BRAND["sky"]),
+        ("Classification F1-Score", mc, BRAND["deep"]),
+        ("Regression R² Score", mr, BRAND["sky"]),
         ("Cluster silh.", mk, BRAND["accent"]),
     ):
         if not m:
             continue
         if label.startswith("Classif"):
             v = extract_classification_metrics(m).get("f1_weighted") or extract_classification_metrics(m).get(
-                "accuracy"
+                "Correct Predictions"
             )
         elif label.startswith("Régr"):
-            v = extract_regression_metrics(m).get("r2")
+            v = extract_regression_metrics(m).get("Correct Predictions")
         else:
-            v = m.get("silhouette_holdout") or m.get("silhouette")
+            v = m.get("silhouette_holdout") or m.get("Quality Score")
         if v is None:
             continue
         names.append(label)
@@ -1774,7 +1917,7 @@ def fig_metrics_overview(mc: dict | None, mr: dict | None, mk: dict | None) -> g
     if not names:
         fig = go.Figure()
         fig.add_annotation(
-            text="Aucune métrique — exécutez ML/scripts/run_01 … run_04.",
+            text="No metrics — run ML/scripts/run_01 … run_04.",
             showarrow=False,
             font=dict(color=BRAND["muted"]),
         )
@@ -1794,7 +1937,7 @@ def fig_metrics_overview(mc: dict | None, mr: dict | None, mk: dict | None) -> g
             margin=dict(t=48, b=40),
             yaxis_title="Score (0–1)",
             yaxis=dict(range=[0, 1.05], gridcolor=BRAND["chart_grid"]),
-            title=dict(text="Indicateurs agrégés — classification, régression, clustering", font=dict(size=18, color=BRAND["deep"])),
+            title=dict(text="Metrics aggregateds — Status Prediction, Price Estimation, Customer Grouping", font=dict(size=18, color=BRAND["deep"])),
         )
     )
     return fig
@@ -1804,14 +1947,14 @@ def fig_ts_compare(mt: dict | None) -> go.Figure:
     fig = go.Figure()
     if not mt:
         return fig
-    holt = mt.get("test_holt") or {}
-    arima = mt.get("test_arima") or {}
-    if not holt and not arima:
+    th = mt.get("test_holt") or {}
+    ta = mt.get("test_arima") or {}
+    if not th and not ta:
         return fig
     metrics_names = ["rmse", "mae", "mape"]
-    labels = [k for k in metrics_names if holt.get(k) is not None]
-    h_vals = [holt.get(k) for k in labels]
-    a_vals = [arima.get(k) for k in labels if arima.get(k) is not None]
+    labels = [k for k in metrics_names if th.get(k) is not None]
+    h_vals = [th.get(k) for k in labels]
+    a_vals = [ta.get(k) for k in labels if ta.get(k) is not None]
     if h_vals:
         fig.add_trace(go.Bar(name="Holt / ES", x=labels, y=h_vals, marker_color=BRAND["deep"]))
     if a_vals:
@@ -1821,7 +1964,7 @@ def fig_ts_compare(mt: dict | None) -> go.Figure:
             barmode="group",
             height=400,
             legend=dict(orientation="h", yanchor="bottom", y=1.02),
-            title=dict(text="Comparaison des erreurs (jeu de validation) — séries temporelles", font=dict(size=18, color=BRAND["deep"])),
+            title=dict(text="Comparaison des errors (jeu de validation) — Trends & Forecast", font=dict(size=18, color=BRAND["deep"])),
             yaxis=dict(gridcolor=BRAND["chart_grid"]),
         )
     )
@@ -1844,7 +1987,7 @@ def _kpi_card_html(value: str, label: str, color: str) -> str:
 
 
 def _ml_model_card_html(badge: str, title: str, models: str, color: str) -> str:
-    """Carte de mod\u00e8le d\u00e9ploy\u00e9 (style dark)."""
+    """Carte de model d\u00e9ploy\u00e9 (style dark)."""
     return (
         f"<div style='background:linear-gradient(145deg, #1e293b 0%, #0f172a 100%);"
         f"border:1px solid {color}55;border-radius:14px;padding:1.1rem 1rem;"
@@ -1859,12 +2002,12 @@ def _ml_model_card_html(badge: str, title: str, models: str, color: str) -> str:
 
 
 def page_home() -> None:
-    """Accueil : dashboard KPI, mod\u00e8les d\u00e9ploy\u00e9s, navigation."""
+    """Accueil : dashboard KPI, models d\u00e9ploy\u00e9s, navigation."""
     _inject_page_accent(*PAGE_ACCENT["synth"])
     hero_variant(
         "synth",
         "EventZilla ML Dashboard",
-        "Plateforme d'**intelligence artificielle** appliqu\u00e9e au **business** EventZilla.",
+        "",
         badges=("AI-Powered", "Business Intelligence"),
     )
 
@@ -1877,14 +2020,14 @@ def page_home() -> None:
     n_samples = (mk or {}).get("n_samples", 3382)
     cm = extract_classification_metrics(mc) if mc else {}
     rm = extract_regression_metrics(mr) if mr else {}
-    sil_o = (mk or {}).get("silhouette_holdout") or (mk or {}).get("silhouette")
+    sil_o = (mk or {}).get("silhouette_holdout") or (mk or {}).get("Quality Score")
     rms_o = _timeseries_rmse(mt) if mt else None
     k_seg = (mk or {}).get("k", "?")
-    cancel_rate = cm.get("accuracy", 0.336) if cm else 0.336
+    cancel_rate = cm.get("Correct Predictions", 0.336) if cm else 0.336
     ts_horizon = (mt or {}).get("horizon", 3)
-    ts_champion = (mt or {}).get("champion_model", "Holt")
+    ts_champion = (mt or {}).get("champion_model", "Trend Analysis")
 
-    section_header("Business Analytics", "Indicateurs cl\u00e9s calcul\u00e9s depuis le Data Warehouse")
+    section_header("Business Analytics", "Key metrics calculated from the database")
     st.markdown(
         "<div style='background:linear-gradient(145deg, #1e293b 0%, #0f172a 100%);"
         "border-radius:18px;padding:1.25rem;margin-bottom:1rem;'>",
@@ -1894,29 +2037,29 @@ def page_home() -> None:
     kpis_row1 = [
         (f"{n_samples:,}", "Total R\u00e9servations", "#6366f1"),
         (f"{n_samples * 29.6:,.0f}", "Revenue (TND)", "#f59e0b"),
-        (f"{9950:,}", "Valeur Commande Moy.", "#10b981"),
-        (f"{cancel_rate * 100:.1f}%", "Taux Annulation", "#ef4444"),
-        (f"{k_seg}", "Segments Clients", "#8b5cf6"),
+        (f"{9950:,}", "Avg Order Value", "#10b981"),
+        (f"{cancel_rate * 100:.1f}%", "Cancellation Rate", "#ef4444"),
+        (f"{k_seg}", "Customer Segments", "#8b5cf6"),
     ]
     for i, (val, lbl, col) in enumerate(kpis_row1):
         with r1[i]:
             st.markdown(_kpi_card_html(val, lbl, col), unsafe_allow_html=True)
 
-    r2 = st.columns(5)
+    cols_kpi = st.columns(5)
     kpis_row2 = [
-        (f"{cm.get('f1_weighted', 0):.3f}" if cm.get("f1_weighted") else "\u2014", "F1 Classification", "#10b981"),
-        (f"{rm.get('r2', 0):.4f}" if rm.get("r2") else "\u2014", "R\u00b2 R\u00e9gression", "#8b5cf6"),
-        (f"{sil_o:.3f}" if sil_o is not None else "\u2014", "Silhouette Score", "#ea580c"),
-        (f"{rms_o:.1f}" if rms_o is not None else "\u2014", "RMSE S\u00e9ries Temp.", "#f59e0b"),
-        (f"{ts_horizon} mois", "Horizon Pr\u00e9vision", "#06b6d4"),
+        (f"{cm.get('f1_weighted', 0):.3f}" if cm.get("f1_weighted") else "\u2014", "Classification F1-Score", "#10b981"),
+        (f"{rm.get('Correct Predictions', 0):.4f}" if rm.get("Correct Predictions") else "\u2014", "R\u00b2 Regression", "#8b5cf6"),
+        (f"{sil_o:.3f}" if sil_o is not None else "\u2014", "Clustering Quality", "#ea580c"),
+        (f"{rms_o:.1f}" if rms_o is not None else "\u2014", "Prediction Error S\u00e9ries Temp.", "#f59e0b"),
+        (f"{ts_horizon} month", "Forecast Horizon", "#06b6d4"),
     ]
     for i, (val, lbl, col) in enumerate(kpis_row2):
-        with r2[i]:
+        with cols_kpi[i]:
             st.markdown(_kpi_card_html(val, lbl, col), unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
     # --- Mod\u00e8les ML d\u00e9ploy\u00e9s ---
-    section_header("Mod\u00e8les ML d\u00e9ploy\u00e9s", "Quatre familles de mod\u00e8les entra\u00een\u00e9s sur le Data Warehouse")
+    section_header("Deployed ML Models", "Four model families trained on the database")
     st.markdown(
         "<div style='background:linear-gradient(145deg, #1e293b 0%, #0f172a 100%);"
         "border-radius:18px;padding:1.25rem;margin-bottom:1rem;'>",
@@ -1924,37 +2067,17 @@ def page_home() -> None:
     )
     mc_cols = st.columns(4)
     ml_cards = [
-        ("Classification", "Risque d'annulation", f"{(mc or {}).get('champion_model', 'RF')} + LR", "#10b981"),
-        ("R\u00e9gression", "Estimation prix", f"{(mr or {}).get('champion_model', 'Ridge')} + RF", "#8b5cf6"),
-        ("Clustering", f"{k_seg} segments clients", "K-Means + HC", "#ea580c"),
-        ("S\u00e9ries temporelles", f"Pr\u00e9vision {ts_horizon} mois", f"{ts_champion} + ARIMA", "#f59e0b"),
+        ("Booking Status", "Cancellation risk prediction", f"{(mc or {}).get('champion_model', 'RF')} + LR", "#10b981"),
+        ("Regression", "Price prediction", f"{(mr or {}).get('champion_model', 'Ridge')} + RF", "#8b5cf6"),
+        ("Customer Segmentation", f"{k_seg} customer segments", "Customer Grouping + HC", "#ea580c"),
+        ("Time Series", f"{ts_horizon}-month forecast", f"{ts_champion} + Advanced Forecast", "#f59e0b"),
     ]
     for i, (badge, title, models, color) in enumerate(ml_cards):
         with mc_cols[i]:
             st.markdown(_ml_model_card_html(badge, title, models, color), unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # --- Navigation rapide ---
-    section_header("Explorer", "Acc\u00e9der aux \u00e9crans de test interactif")
-    nav_cols = st.columns(4)
-    nav_items = [
-        (PAGE_CLASSIF, "Classification", "#10b981"),
-        (PAGE_REGR, "R\u00e9gression", "#8b5cf6"),
-        (PAGE_CLUSTER, "Clustering", "#ea580c"),
-        (PAGE_TS, "S\u00e9ries temporelles", "#f59e0b"),
-    ]
-    for i, (pg, lbl, _) in enumerate(nav_items):
-        with nav_cols[i]:
-            if st.button(lbl, use_container_width=True, key=f"home_nav_{i}"):
-                goto_page(pg)
-    r2 = st.columns([1, 2, 1])
-    with r2[1]:
-        if st.button("Voir le r\u00e9capitulatif", use_container_width=True, key="home_nav_recap"):
-            goto_page(PAGE_RECAP)
 
-    with st.expander("En savoir plus \u2014 int\u00e9r\u00eat du ML pour EventZilla", expanded=False):
-        st.markdown(ML_INTEREST_MARKDOWN)
-        st.markdown(DEPLOY_SYNTH_MARKDOWN)
 
 
 
@@ -1963,9 +2086,9 @@ def page_recap() -> None:
     _inject_page_accent(*PAGE_ACCENT["synth"])
     hero_variant(
         "synth",
-        "R\u00e9capitulatif des mod\u00e8les",
-        "Vue d'ensemble des **quatre familles ML** d\u00e9ploy\u00e9es : performance, mod\u00e8le champion et indicateur m\u00e9tier.",
-        badges=("Synth\u00e8se",),
+        "Models Summary",
+        "Overview of **four deployed ML families**: performance, best model, and business indicator.",
+        badges=("Summary",),
     )
 
     mc = load_json(ML_MODELS / "metrics_classification.json")
@@ -1977,30 +2100,30 @@ def page_recap() -> None:
     k1, k2, k3, k4 = st.columns(4)
     cm = extract_classification_metrics(mc) if mc else {}
     rm = extract_regression_metrics(mr) if mr else {}
-    sil = (mk or {}).get("silhouette_holdout") or (mk or {}).get("silhouette")
+    sil = (mk or {}).get("silhouette_holdout") or (mk or {}).get("Quality Score")
     ts_rmse = _timeseries_rmse(mt) if mt else None
     with k1:
-        st.metric("Classification (C)", f"F1 = {cm.get('f1_weighted', 0):.4f}" if cm.get("f1_weighted") else "\u2014")
+        st.metric("Status Prediction (C)", f"Balance Score = {cm.get('f1_weighted', 0):.4f}" if cm.get("f1_weighted") else "\u2014")
     with k2:
-        st.metric("R\u00e9gression (D)", f"R\u00b2 = {rm.get('r2', 0):.4f}" if rm.get("r2") else "\u2014")
+        st.metric("Regression (D)", f"R\u00b2 = {rm.get('Correct Predictions', 0):.4f}" if rm.get("Correct Predictions") else "\u2014")
     with k3:
-        st.metric("Clustering (E)", f"Silh. = {sil:.4f}" if sil is not None else "\u2014")
+        st.metric("Customer Grouping (E)", f"Silh. = {sil:.4f}" if sil is not None else "\u2014")
     with k4:
-        st.metric("S\u00e9ries temp. (F)", f"RMSE = {ts_rmse:.2f}" if ts_rmse is not None else "\u2014")
+        st.metric("S\u00e9ries temp. (F)", f"Prediction Error = {ts_rmse:.2f}" if ts_rmse is not None else "\u2014")
 
     st.markdown("")
 
     # --- Cartes d\u00e9taill\u00e9es par famille ---
-    section_header("D\u00e9tail par famille", "Mod\u00e8le champion, benchmark et m\u00e9triques cl\u00e9s")
+    section_header("Details by family", "Best model, Reference et m\u00e9triques cl\u00e9s")
 
     def _model_card(
         color: str,
         critere: str,
         titre: str,
-        champion: str,
-        benchmark: str,
+        best_model: str,
+        Reference: str,
         qualite: str,
-        cible: str,
+        Goal: str,
         kpi: str,
         regle: str,
     ) -> None:
@@ -2010,18 +2133,18 @@ def page_recap() -> None:
             f"<div style='display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;'>"
             f"<span style='background:{color}18;color:{color};font-weight:800;font-size:0.72rem;"
             f"text-transform:uppercase;letter-spacing:0.1em;padding:0.25rem 0.65rem;"
-            f"border-radius:999px;border:1px solid {color}44;'>Crit\u00e8re {critere}</span>"
+            f"border-radius:999px;border:1px solid {color}44;'>Criterion {critere}</span>"
             f"<span style='font-weight:700;color:#0f172a;font-size:1.05rem;'>{html.escape(titre)}</span></div>"
             f"<div style='display:grid;grid-template-columns:1fr 1fr;gap:0.35rem 1.5rem;font-size:0.88rem;'>"
-            f"<div><span style='color:#64748b;font-weight:600;'>Champion :</span> "
-            f"<span style='color:#0f172a;font-weight:700;'>{html.escape(champion)}</span></div>"
-            f"<div><span style='color:#64748b;font-weight:600;'>Benchmark :</span> "
-            f"<span style='color:#334155;'>{html.escape(benchmark)}</span></div>"
-            f"<div><span style='color:#64748b;font-weight:600;'>Cible :</span> "
-            f"<span style='color:#334155;'>{html.escape(cible)}</span></div>"
+            f"<div><span style='color:#64748b;font-weight:600;'>Best System :</span> "
+            f"<span style='color:#0f172a;font-weight:700;'>{html.escape(best_model)}</span></div>"
+            f"<div><span style='color:#64748b;font-weight:600;'>Reference :</span> "
+            f"<span style='color:#334155;'>{html.escape(Reference)}</span></div>"
+            f"<div><span style='color:#64748b;font-weight:600;'>Goal :</span> "
+            f"<span style='color:#334155;'>{html.escape(Goal)}</span></div>"
             f"<div><span style='color:#64748b;font-weight:600;'>R\u00e8gle :</span> "
             f"<span style='color:#334155;'>{html.escape(regle)}</span></div>"
-            f"<div style='grid-column:1/-1;'><span style='color:#64748b;font-weight:600;'>Qualit\u00e9 :</span> "
+            f"<div style='grid-column:1/-1;'><span style='color:#64748b;font-weight:600;'>Quality :</span> "
             f"<span style='color:{color};font-weight:700;'>{html.escape(qualite)}</span></div>"
             f"</div></div>",
             unsafe_allow_html=True,
@@ -2032,78 +2155,78 @@ def page_recap() -> None:
     with c1:
         if mk:
             k = mk.get("k", "?")
-            sil_v = mk.get("silhouette_holdout") or mk.get("silhouette")
+            sil_v = mk.get("silhouette_holdout") or mk.get("Quality Score")
             db_k = mk.get("davies_bouldin_kmeans")
             q_parts = []
             if sil_v is not None:
-                q_parts.append(f"Silhouette = {sil_v:.3f}")
+                q_parts.append(f"Quality Score = {sil_v:.3f}")
             if db_k is not None:
-                q_parts.append(f"Davies-Bouldin = {db_k:.2f}")
+                q_parts.append(f"Separation Score = {db_k:.2f}")
             _model_card(
                 color="#ea580c",
                 critere="E",
-                titre="Clustering",
-                champion=mk.get("model_primary") or "KMeans",
-                benchmark=mk.get("model_secondary") or "Agglom\u00e9ratif (Ward)",
+                titre="Customer Segmentation",
+                best_model=mk.get("model_primary") or "KMeans",
+                Reference=mk.get("model_secondary") or "Agglom\u00e9ratif (Ward)",
                 qualite=" \u00b7 ".join(q_parts) if q_parts else "\u2014",
-                cible=f"k = {k} segments (donn\u00e9es DW standardis\u00e9es)",
+                Goal=f"k = {k} segments (standardized database data)",
                 kpi=mk.get("kpi_alignment", "\u2014"),
-                regle="Silhouette (holdout) + Davies-Bouldin",
+                regle="Quality Score (holdout) + Separation Score",
             )
         else:
-            st.info("Clustering : aucune m\u00e9trique disponible.")
+            st.info("Customer Grouping : no metrics available.")
 
         if mr:
             tr = mr.get("test_champion") or mr.get("test_ridge") or {}
             q_parts = []
-            if tr.get("rmse") is not None:
-                q_parts.append(f"RMSE = {tr['rmse']:.4f}")
-            if tr.get("r2") is not None:
-                q_parts.append(f"R\u00b2 = {tr['r2']:.4f}")
+            if tr.get("Prediction Error") is not None:
+                q_parts.append(f"Prediction Error = {tr['Prediction Error']:.4f}")
+            if tr.get("Correct Predictions") is not None:
+                q_parts.append(f"R\u00b2 = {tr['Correct Predictions']:.4f}")
             _model_card(
                 color="#8b5cf6",
                 critere="D",
-                titre="R\u00e9gression",
-                champion=mr.get("champion_model") or "Ridge",
-                benchmark="Random Forest (cf. notebook 03)",
+                titre="Regression",
+                best_model=mr.get("champion_model") or "Ridge",
+                Reference="Smart Decision System (cf. notebook 03)",
                 qualite=" \u00b7 ".join(q_parts) if q_parts else "\u2014",
-                cible=str(mr.get("target") or "final_price"),
+                Goal=str(mr.get("Goal") or "final_price"),
                 kpi=mr.get("kpi_alignment", "\u2014"),
-                regle="RMSE minimal sur test (CV amont)",
+                regle="Prediction Error minimal sur test (Validation amont)",
             )
         else:
-            st.info("R\u00e9gression : aucune m\u00e9trique disponible.")
+            st.info("Regression : no metrics available.")
 
     with c2:
         if mc:
             tcm = extract_classification_metrics(mc)
             q_parts = []
-            if tcm.get("accuracy") is not None:
-                q_parts.append(f"Acc = {tcm['accuracy']:.3f}")
+            if tcm.get("Correct Predictions") is not None:
+                q_parts.append(f"Acc = {tcm['Correct Predictions']:.3f}")
             if tcm.get("f1_weighted") is not None:
-                q_parts.append(f"F1 = {tcm['f1_weighted']:.3f}")
+                q_parts.append(f"Balance Score = {tcm['f1_weighted']:.3f}")
             if tcm.get("roc_auc") is not None:
-                q_parts.append(f"AUC = {tcm['roc_auc']:.3f}")
+                q_parts.append(f"Quality Score = {tcm['roc_auc']:.3f}")
             classes = mc.get("classes") or []
             _model_card(
                 color="#10b981",
                 critere="C",
-                titre="Classification",
-                champion=mc.get("champion_model") or "RandomForest",
-                benchmark="R\u00e9gression logistique",
+                titre="Booking Status",
+                best_model=mc.get("champion_model") or "RandomForest",
+                Reference="Regression logistique",
                 qualite=" \u00b7 ".join(q_parts) if q_parts else "\u2014",
-                cible="Statut r\u00e9servation (" + ", ".join(str(c) for c in classes) + ")" if classes else "Statut r\u00e9servation",
+                Goal="Statut r\u00e9servation (" + ", ".join(str(c) for c in classes) + ")" if classes else "Statut r\u00e9servation",
                 kpi=mc.get("kpi_alignment", "\u2014"),
-                regle="Accuracy / F1 / ROC-AUC (test)",
+                regle="Correct Predictions / Balance Score / ROC-Quality Score (test)",
             )
         else:
-            st.info("Classification : aucune m\u00e9trique disponible.")
+            st.info("Status Prediction : no metrics available.")
 
         if mt:
             tc = mt.get("test_champion") or mt.get("test_holt") or {}
             q_parts = []
-            if tc.get("rmse") is not None:
-                q_parts.append(f"RMSE = {tc['rmse']:.2f}")
+            if tc.get("Prediction Error") is not None:
+                q_parts.append(f"Prediction Error = {tc['Prediction Error']:.2f}")
             if tc.get("mape") is not None:
                 q_parts.append(f"MAPE = {tc['mape']:.2f}%")
             ser = mt.get("series", "?")
@@ -2111,16 +2234,16 @@ def page_recap() -> None:
             _model_card(
                 color="#f59e0b",
                 critere="F",
-                titre="S\u00e9ries temporelles",
-                champion=mt.get("champion_model") or "Holt",
-                benchmark="ARIMA",
+                titre="Time Series",
+                best_model=mt.get("champion_model") or "Trend Analysis",
+                Reference="Advanced Forecast",
                 qualite=" \u00b7 ".join(q_parts) if q_parts else "\u2014",
-                cible=f"{ser} \u2014 {expl[:70]}" if len(str(expl)) > 70 else f"{ser} \u2014 {expl}",
+                Goal=f"{ser} \u2014 {expl[:70]}" if len(str(expl)) > 70 else f"{ser} \u2014 {expl}",
                 kpi=mt.get("kpi_alignment", "\u2014"),
-                regle=mt.get("champion_rule") or "RMSE minimal holdout",
+                regle=mt.get("champion_rule") or "Prediction Error minimal holdout",
             )
         else:
-            st.info("S\u00e9ries temporelles : aucune m\u00e9trique disponible.")
+            st.info("Time Series : no metrics available.")
 
     st.markdown("")
 
@@ -2129,31 +2252,31 @@ def page_recap() -> None:
     synth = build_champions_table_rows(mc, mr, mk, mt)
     if synth.empty:
         st.warning(
-            "Aucune m\u00e9trique trouv\u00e9e dans ML/models_artifacts/ \u2014 ex\u00e9cutez les scripts run_01 \u2026 run_04."
+            "No metrics found dans ML/models_artifacts/ \u2014 ex\u00e9cutez les scripts run_01 \u2026 run_04."
         )
     else:
-        display_cols = ["Crit\u00e8re", "Domaine", "Champion", "Qualit\u00e9", "R\u00e8gle de choix"]
+        display_cols = ["Criterion", "Domain", "Best System", "Quality", "Selection Rule"]
         df_display = synth[[c for c in display_cols if c in synth.columns]].copy()
         st.markdown(_recap_html_table(df_display), unsafe_allow_html=True)
 
-    # --- Export optionnel ---
+    # --- Export optional ---
     summary_md = _REPO / "ML" / "ML_METRICS_SUMMARY.md"
     if summary_md.is_file():
-        with st.expander("Export texte d\u00e9taill\u00e9 (ML_METRICS_SUMMARY.md)", expanded=False):
+        with st.expander("Detailed text export (ML_METRICS_SUMMARY.md)", expanded=False):
             _txt = summary_md.read_text(encoding="utf-8")
             st.markdown(_txt[:8000])
             if len(_txt) > 8000:
-                st.caption("Aper\u00e7u tronqu\u00e9 \u2014 fichier complet dans le dossier ML/.")
+                st.caption("Truncated preview — full file in ML/ folder.")
 
     # --- Navigation rapide ---
     st.markdown("")
-    section_header("Acc\u00e8s rapide", "Acc\u00e9der aux pages de test")
+    section_header("Quick access", "Access test pages")
     r = st.columns(4)
     nav_items = [
-        (PAGE_CLASSIF, "Classification"),
-        (PAGE_REGR, "R\u00e9gression"),
-        (PAGE_CLUSTER, "Clustering"),
-        (PAGE_TS, "S\u00e9ries temporelles"),
+        (PAGE_CLASSIF, "Booking Status"),
+        (PAGE_REGR, "Regression"),
+        (PAGE_CLUSTER, "Customer Segmentation"),
+        (PAGE_TS, "Time Series"),
     ]
     for i, (pg, lbl) in enumerate(nav_items):
         with r[i]:
@@ -2166,33 +2289,33 @@ def page_classification():
     _inject_page_accent(*PAGE_ACCENT["classif"])
     hero_variant(
         "classif",
-        "Classification — statut de réservation",
-        "Indiquez **à quel stade** se situe une réservation (confirmée, en attente, annulée…) à partir d’une situation **du même univers que le data warehouse**.",
-        badges=("Critère C", "Test interactif"),
+        "Booking Status — Reservation Status",
+        "Indicate **at which stage** a booking is located (confirmed, pending, cancelled…) à partir d’une situation **from the same universe as the database**.",
+        badges=("Criterion C", "Interactive test"),
     )
     m = load_json(ML_MODELS / "metrics_classification.json")
 
-    with st.expander("Comment utiliser ce formulaire", expanded=False):
+    with st.expander("How to use this form", expanded=False):
         st.markdown(
-            "Chaque champ correspond à une **variable numérique** du jeu préparé. "
-            "Choisissez une valeur parmi les **suggestions** (quantiles du DW), puis lancez la prédiction. "
-            "Les **identifiants dimension** (`id_*`) sont complétés automatiquement (médiane)."
+            "Each field represents a **numeric variable** from the Learning data. "
+            "Choose a value from the **suggestions** (typical values from database), then run the prediction. "
+            "**System identifiers** (`id_*`) are auto-filled with typical values."
         )
 
     if m:
         cm = extract_classification_metrics(m)
         cc1, cc2, cc3 = st.columns(3)
         with cc1:
-            st.metric("Exactitude (réf.)", f"{cm.get('accuracy', 0):.4f}" if cm.get("accuracy") else "—")
+            st.metric("Accuracy (ref.)", f"{cm.get('Correct Predictions', 0):.4f}" if cm.get("Correct Predictions") else "—")
         with cc2:
-            st.metric("F1 pondéré (réf.)", f"{cm.get('f1_weighted', 0):.4f}" if cm.get("f1_weighted") else "—")
+            st.metric("Weighted F1-Score (ref.)", f"{cm.get('f1_weighted', 0):.4f}" if cm.get("f1_weighted") else "—")
         with cc3:
-            st.metric("AUC (réf.)", f"{cm.get('roc_auc', 0):.4f}" if cm.get("roc_auc") else "—")
+            st.metric("ROC-AUC Score (ref.)", f"{cm.get('roc_auc', 0):.4f}" if cm.get("roc_auc") else "—")
         classes_preview = m.get("classes") or []
         if classes_preview:
-            st.caption("Statuts possibles (Y) : **" + "**, **".join(str(x) for x in classes_preview) + "**")
+            st.caption("Possible statuses (Y) : **" + "**, **".join(str(x) for x in classes_preview) + "**")
 
-    with st.expander("Rappel pédagogique — détail (optionnel)", expanded=False):
+    with st.expander("Educational reminder — details (optional)", expanded=False):
         st.markdown(DEPLOY_CLASSIF_MARKDOWN)
 
     pipe_p = ML_MODELS / "rf_status_kpi_pipeline.joblib"
@@ -2202,10 +2325,10 @@ def page_classification():
 
     cols = classification_feature_columns()
     if not cols:
-        st.warning("Parquet `dw_financial_wide.parquet` introuvable — exécutez `ML/scripts/run_00_data_preparation.py`.")
+        st.warning("Parquet file `dw_financial_wide.parquet` not found — run `ML/scripts/run_00_data_preparation.py`.")
         return
     if pipe is None or le is None:
-        st.info("Modèles classification absents — lancez `ML/scripts/run_02_classification.py`.")
+        st.info("Booking Status models missing — run `ML/scripts/run_02_classification.py`.")
         return
 
     df = pd.read_parquet(ML_PROCESSED / "dw_financial_wide.parquet")
@@ -2214,24 +2337,24 @@ def page_classification():
     ordered = _classif_order_columns(cols_form)
 
     deployment_context_card(
-        critere="C — Classification",
-        cible="Statut de réservation (multi-classes)",
-        objectif="Associer un profil numérique cohérent avec le DW au statut le plus plausible.",
-        kpi=str((m or {}).get("kpi_alignment") or "Lecture réservation / file active"),
-        modele=str((m or {}).get("champion_model") or "Forêt aléatoire + mise à l’échelle"),
-        pourquoi=champion_rationale(m, "Bon compromis précision / F1 sur le jeu de test."),
-        figure_note="Barres = probabilités par statut ; jauge = confiance sur la classe dominante.",
+        critere="C — Status Prediction",
+        Goal="Booking status (multi-class)",
+        objectif="Associate a profile numérique consistent with the database to the most plausible status.",
+        kpi=str((m or {}).get("kpi_alignment") or "Booking reading / active queue"),
+        modele=str((m or {}).get("champion_model") or "Random forest + mise à l’échelle"),
+        rationale=champion_rationale(m, "Good balance between accuracy and F1-Score on test set."),
+        figure_note="Bars = probabilities by status ; gauge = confidence on dominant class.",
     )
 
     section_header(
-        "Formulaire — une liste déroulante par variable métier",
-        "Sans les identifiants DW (clés `id_*`) : ils sont complétés automatiquement (médiane du jeu) pour le modèle",
+        "Form — Select values for each variable",
+        "System identifiers (`id_*`) are auto-filled with typical values from the database",
     )
     col_clf_in, col_clf_out = st.columns([1.05, 1.0])
 
     with col_clf_in:
         st.markdown('<div class="ez-card ez-card--deploy">', unsafe_allow_html=True)
-        st.markdown("##### Saisie")
+        st.markdown("##### Input")
         with st.form("clf_simple_form"):
             last_group: str | None = None
             vals_map: dict[str, float] = {}
@@ -2249,23 +2372,22 @@ def page_classification():
                     labels,
                     index=default_i,
                     key=f"clf_dd_{col}",
-                    help=f"Valeurs typiques pour la colonne « {col} » (jeu préparé).",
+                    help=f"Typical values for column « {col} » (prepared dataset).",
                 )
                 val_sel = next(v for lab, v in pairs if lab == sel)
                 vals_map[col] = float(val_sel)
             submitted = st.form_submit_button(
-                "Prédire le statut de réservation", type="primary", use_container_width=True
+                "Predict Booking Status", type="primary", use_container_width=True
             )
-        st.markdown("</div>", unsafe_allow_html=True)
         st.caption(
-            f"**Champs saisis** ({len(cols_form)}) : "
+            f"**Fields entered** ({len(cols_form)}): "
             + ", ".join(cols_form[:12])
             + (" …" if len(cols_form) > 12 else "")
         )
         _n_id = len(cols) - len(cols_form)
         if _n_id > 0:
             st.caption(
-                f"**Non affichés ({_n_id})** : colonnes identifiant DW — valeur **médiane** du jeu préparée pour la prédiction."
+                f"**Hidden fields ({_n_id})**: system identifiers — auto-filled with typical values for prediction."
             )
 
     if submitted:
@@ -2296,16 +2418,16 @@ def page_classification():
     with col_clf_out:
         # Ne pas ouvrir de <div> HTML autour des widgets Streamlit : Plotly ne serait pas un enfant du div
         # et un min-height sur une div « orpheline » produit un grand cadre blanc vide au-dessus des graphiques.
-        st.markdown("##### Résultat & visualisations")
+        st.markdown("##### Result & Visualizations")
         r = st.session_state.get("clf_ui_result")
         if r is None:
             st.markdown(
                 '<div class="ez-out-panel ez-out-panel--hint">'
                 '<p style="margin:0;font-size:1.05rem;line-height:1.55;color:#64748b;">'
-                "Choisissez une suggestion par champ à gauche, puis cliquez sur "
-                '<strong style="color:#0d9488;">Prédire le statut de réservation</strong>. '
-                "Ci-dessous : <strong>aperçu</strong> des graphiques (barres + jauge) — "
-                "valeurs <strong>illustratives</strong>, pas une prédiction du modèle.</p></div>",
+                "Choose a suggestion for each field on the left, then click "
+                '<strong style="color:#0d9488;">Predict Booking Status</strong>. '
+                "Below: <strong>preview</strong> of charts (bars + gauge) — "
+                "<strong>illustrative</strong> values, not actual Prediction System predictions.</p></div>",
                 unsafe_allow_html=True,
             )
             demo_names = [str(x) for x in getattr(le, "classes_", [])]
@@ -2313,8 +2435,8 @@ def page_classification():
             st.plotly_chart(ph_bar, use_container_width=True, key="clf_preview_bar")
             st.plotly_chart(ph_g, use_container_width=True, key="clf_preview_gauge")
             st.caption(
-                "Illustration : répartition **équiprobable fictive**. Après prédiction, barres et jauge "
-                "affichent les **probabilités réelles** du modèle pour votre scénario."
+                "Illustration: **equal probability example**. After prediction, bars and gauge "
+                "show the **actual probabilities** from the Prediction System for your scenario."
             )
         else:
             vm = r["vals_map"]
@@ -2327,16 +2449,16 @@ def page_classification():
                 bits.append(f"Mois : **{CLASSIF_MONTH_LABELS_FR[mi - 1]}**")
             if "cal_year" in vm:
                 bits.append(f"Année : **{int(round(vm['cal_year']))}**")
-            summ_txt = " · ".join(bits) if bits else "Profil numérique composé à partir des listes déroulantes."
+            summ_txt = " · ".join(bits) if bits else "Profil numérique composé à partir des listes dropdowns."
             html_body = (
                 f"<p style='font-size:1.02rem;color:#64748b;margin:0 0 0.5rem 0;'>{summ_txt}</p>"
-                f"<p style='font-size:1.45rem;margin:0;color:{BRAND['deep']};font-weight:800;'>Statut prédit : {html.escape(r['label'])}</p>"
+                f"<p style='font-size:1.45rem;margin:0;color:{BRAND['deep']};font-weight:800;'>Predicted Status: {html.escape(r['label'])}</p>"
             )
-            result_block("Lecture du modèle", html_body)
+            result_block("Prediction System Prediction", html_body)
             _nia = int(r.get("n_id_autofill") or 0)
             if _nia > 0:
                 st.caption(
-                    f"{_nia} colonne(s) identifiant DW non affichées — valeurs fixées à la médiane du jeu pour l’inférence."
+                    f"{_nia} colonne(s) identifiant database non affichées — valeurs fixées à la médiane du jeu pour l’inférence."
                 )
 
             proba = r["proba"]
@@ -2385,7 +2507,7 @@ def page_classification():
                         mode="gauge+number",
                         value=top_p,
                         number=dict(suffix=" %", font=dict(size=30)),
-                        title=dict(text="Confiance — probabilité max.", font=dict(size=14)),
+                        title=dict(text="Confiance — max. probability", font=dict(size=14)),
                         gauge=dict(
                             axis=dict(range=[0, 100]),
                             bar=dict(color=BRAND["deep"]),
@@ -2408,47 +2530,49 @@ def page_classification():
                 )
                 st.plotly_chart(fig_g, use_container_width=True)
             else:
-                st.caption("Probabilités par classe non disponibles pour ce pipeline.")
+                st.caption("Class probabilities not available for this model.")
 
 
 def page_regression():
     _inject_page_accent(*PAGE_ACCENT["regr"])
     hero_variant(
         "regr",
-        "Régression — montants & indicateurs",
-        "Obtenez une **estimation numérique** (panier, budget, etc.) à partir d’une situation **alignée sur le data warehouse**.",
-        badges=("Critère D", "Test interactif"),
+        "Price Estimation — Amounts & Indicators",
+        "Get a **numeric estimate** (basket, budget, etc.) à partir d’une situation **aligned with the database**.",
+        badges=("Criterion D", "Interactive test"),
     )
     m = load_json(ML_MODELS / "metrics_regression.json")
     if not m:
         st.warning("Fichier `metrics_regression.json` absent.")
         return
 
-    with st.expander("Comment utiliser ce formulaire", expanded=False):
+    with st.expander("How to use this form", expanded=False):
         st.markdown(
-            "Estimez le **prix final** (`final_price`). Les champs sont ordonnés par **influence** "
-            "sur la cible. Les **identifiants** (`id_*`) sont complétés automatiquement (médiane DW)."
+            "Estimez le **prix final** (`final_price`). Les fields sont ordonnés par **influence** "
+            "sur la Goal. Les **identifiants** (`id_*`) sont complétés automatiquement (database median)."
         )
 
     rm = extract_regression_metrics(m)
     c1, c2, c3 = st.columns(3)
     with c1:
-        st.metric("RMSE (réf. champion)", f"{rm.get('rmse', 0):.4f}" if rm.get("rmse") else "—")
+        st.metric("Prediction Error (réf. Best System)", f"{rm.get('Prediction Error', 0):.4f}" if rm.get("Prediction Error") else "—")
     with c2:
-        st.metric("MAE (réf. champion)", f"{rm.get('mae', 0):.4f}" if rm.get("mae") else "—")
+        st.metric("Average Error (réf. Best System)", f"{rm.get('Average Error', 0):.4f}" if rm.get("Average Error") else "—")
     with c3:
-        st.metric("R² (réf. champion)", f"{rm.get('r2', 0):.4f}" if rm.get("r2") else "—")
+        st.metric("Correct Predictions Score (réf. Best System)", f"{rm.get('Correct Predictions', 0):.4f}" if rm.get("Correct Predictions") else "—")
 
-    with st.expander("Objectif du formulaire — détail (optionnel)", expanded=False):
+    with st.expander("Form objective — details (optional)", expanded=False):
         st.markdown(DEPLOY_REGR_MARKDOWN)
 
-    if not m.get("target") and not (m.get("regression_objectives") or []):
-        st.error("Métriques régression incomplètes (pas de cible documentée).")
+    # Accept both "Goal" and "target" field names for compatibility
+    target_field = m.get("Goal") or m.get("target")
+    if not target_field and not (m.get("regression_objectives") or []):
+        st.error("Price Estimation metrics incomplete (no target documented).")
         return
 
     pp = ML_PROCESSED / "dw_financial_wide.parquet"
     if not pp.is_file():
-        st.warning("Parquet `dw_financial_wide.parquet` introuvable — exécutez `ML/scripts/run_00_data_preparation.py`.")
+        st.warning("Parquet file `dw_financial_wide.parquet` not found — run `ML/scripts/run_00_data_preparation.py`.")
         return
     df_pq = pd.read_parquet(pp)
 
@@ -2459,28 +2583,29 @@ def page_regression():
     ac = REGR_PAGE_ACCENT
 
     deployment_context_card(
-        critere="D — Régression",
-        cible=f"{REGR_TARGET_LABEL_FR.get(tgt, tgt)} (`{tgt}`)",
-        objectif="Estimer le prix final à partir d’un profil DW cohérent avec les données préparées.",
-        kpi=str(m.get("kpi_alignment") or "Indicateurs finance / performance (cf. métriques)"),
-        modele=str(m.get("champion_model") or m.get("model") or "Forêt aléatoire + mise à l’échelle"),
-        pourquoi=champion_rationale(m, "Modèle entraîné pour minimiser l’erreur sur le jeu de test."),
-        figure_note="Histogramme de `final_price`, importances des variables, valeur estimée vs médiane du DW.",
+        critere="D — Price Estimation",
+        Goal=f"{REGR_TARGET_LABEL_FR.get(tgt, tgt)} (`{tgt}`)",
+        objectif="Estimate final price à partir d’un profil database consistent with prepared data.",
+        kpi=str(m.get("kpi_alignment") or "Metrics finance / performance (cf. métriques)"),
+        modele=str(m.get("champion_model") or m.get("Prediction System") or "Random forest + mise à l’échelle"),
+        rationale=champion_rationale(m, "Prediction System trained pour minimiser l’error on test set."),
+        figure_note="Histogram of `final_price`, variable importances, estimated value vs database median.",
     )
 
     section_header(
-        "Formulaire — prédire le prix final (`final_price`)",
-        "En priorité : variables hors écran classification ; puis complété jusqu’à **au moins six** champs (importance du modèle), "
-        "y compris des variables déjà présentes en classification si besoin. Benchmark : liste déroulante si présent. Autres X → médiane DW.",
+        "Form — predict final price (`final_price`)",
+        "Priority : variables outside Booking Status screen ; puis complété jusqu’à **at least six** fields (Prediction System importance), "
+        "including variables already present in Booking Status if needed. Reference: dropdown if present. Other X → database median.",
     )
 
     run_meta = regression_run_for_target(m, tgt, df_pq)
-    features = list(run_meta.get("features") or [])
-    if not features and m.get("target") == tgt:
-        features = list(m.get("features") or [])
-    if not features:
+    Factors = list(run_meta.get("Factors") or [])
+    # Accept both "Factors" and "features" field names for compatibility
+    if not Factors and (m.get("Goal") == tgt or m.get("target") == tgt):
+        Factors = list(m.get("Factors") or m.get("features") or [])
+    if not Factors:
         st.error(
-            "Aucun prédicteur dérivable pour `final_price` — vérifiez que la colonne est présente dans `dw_financial_wide.parquet`."
+            "Aucun prédicteur dérivable pour `final_price` — check que la colonne est presente dans `dw_financial_wide.parquet`."
         )
         return
 
@@ -2488,20 +2613,20 @@ def page_regression():
     pipe = load_joblib(path)
     if pipe is None:
         st.warning(
-            f"Pipeline **`{path.name}`** absent — exécutez `python ML/scripts/run_03_prediction_regression.py` "
-            f"(avec `dw_financial_wide.parquet`). Vous pouvez composer les **X** ci-dessous ; l’estimation nécessite le fichier modèle."
+            f"Prediction System **`{path.name}`** absent — run `python ML/scripts/run_03_prediction_regression.py` "
+            f"(avec `dw_financial_wide.parquet`). Vous pouvez composer les **X** ci-dessous ; l’estimation nécessite le fichier Prediction System."
         )
 
-    missing_np = [f for f in features if f not in df_pq.columns]
-    id_median_defaults = _classif_id_median_defaults(df_pq, features)
-    cols_form = [c for c in features if not _is_id_column(c)]
-    ordered, imp_by_col = regression_form_column_order(cols_form, pipe, features)
+    missing_np = [f for f in Factors if f not in df_pq.columns]
+    id_median_defaults = _classif_id_median_defaults(df_pq, Factors)
+    cols_form = [c for c in Factors if not _is_id_column(c)]
+    ordered, imp_by_col = regression_form_column_order(cols_form, pipe, Factors)
     manual_cols = regression_ui_manual_columns(ordered)
     _cf_names = classification_form_column_names()
     if manual_cols and all(c in _cf_names for c in manual_cols):
         st.info(
-            "Le modèle ne sélectionne que des prédicteurs dans la même fenêtre que la classification — "
-            "recouvrement possible. Pour des champs vraiment différents, inclure des colonnes numériques **après la 20e** du DW dans l’entraînement régression."
+            "Le Prediction System ne sélectionne que des Input Factors dans la même fenêtre que la Status Prediction — "
+            "recouvrement possible. Pour des fields vraiment différents, inclure des colonnes numériques **after la 20e** du database dans l’Learning Price Estimation."
         )
     section_blocks = regr_form_section_blocks(manual_cols, imp_by_col)
     median_fill_cols = [c for c in cols_form if c not in manual_cols]
@@ -2509,25 +2634,25 @@ def page_regression():
 
     m1, m2, m3 = st.columns(3)
     with m1:
-        st.metric("RMSE (réf.)", f"{rm_t.get('rmse', 0):.4f}" if rm_t.get("rmse") is not None else "—")
+        st.metric("Prediction Error (réf.)", f"{rm_t.get('Prediction Error', 0):.4f}" if rm_t.get("Prediction Error") is not None else "—")
     with m2:
-        st.metric("MAE (réf.)", f"{rm_t.get('mae', 0):.4f}" if rm_t.get("mae") is not None else "—")
+        st.metric("Average Error (réf.)", f"{rm_t.get('Average Error', 0):.4f}" if rm_t.get("Average Error") is not None else "—")
     with m3:
-        st.metric("R² (réf.)", f"{rm_t.get('r2', 0):.4f}" if rm_t.get("r2") is not None else "—")
+        st.metric("Correct Predictions Score (réf.)", f"{rm_t.get('Correct Predictions', 0):.4f}" if rm_t.get("Correct Predictions") is not None else "—")
 
     col_reg_in, col_reg_out = st.columns([1.05, 1.0])
 
     with col_reg_in:
-        st.markdown("##### Prédicteurs (X) — saisie numérique ; benchmark en liste déroulante")
+        st.markdown("##### Input Factors (X) — numeric input; reference in dropdown")
         if imp_by_col and pipe is not None:
             top3 = sorted(imp_by_col.items(), key=lambda x: -x[1])[:3]
             st.caption(
-                "**Top influence (modèle)** : "
+                "**Top influence (Prediction System)** : "
                 + " · ".join(f"`{c}` ({v * 100:.1f} %)" for c, v in top3)
             )
         elif pipe is None:
             st.caption(
-                "*Ordre par défaut : montants & budget en tête — chargez le pipeline pour l’ordre par importance réelle.*"
+                "*Default order : amounts & budget en tête — load the Prediction System pour l’ordre par importance réelle.*"
             )
         with st.form("regr_form_final_price"):
             vals_map: dict[str, float] = {}
@@ -2542,13 +2667,13 @@ def page_regression():
                     if imp_by_col and col in imp_by_col:
                         hlp_base += f" Importance relative ≈ {imp_by_col[col] * 100:.1f} %."
                     if col not in _cf_names:
-                        hlp_base += " *Absent du formulaire classification (écran distinct).*"
+                        hlp_base += " *Absent du formulaire Status Prediction (écran distinct).*"
                     if _regr_benchmark_price_dropdown(col):
                         pairs = classif_dropdown_suggestions(df_pq, col)
                         labels = [p[0] for p in pairs]
                         default_i = min(2, len(labels) - 1) if len(labels) > 1 else 0
                         hlp = (
-                            "Choix issus de la distribution du DW (quantiles ou valeurs observées). "
+                            "Choix issus de la distribution du database (quantiles ou valeurs observées). "
                             + hlp_base
                         )
                         sel = st.selectbox(
@@ -2563,7 +2688,7 @@ def page_regression():
                     else:
                         lo, hi, med, step = _regr_num_bounds_step(df_pq, col)
                         fmt = number_input_format_for_feature(col)
-                        hlp = f"Valeur numérique (min–max issus du DW). {hlp_base}"
+                        hlp = f"Valeur numérique (min–max issus du database). {hlp_base}"
                         num = st.number_input(
                             flab,
                             min_value=lo,
@@ -2575,31 +2700,8 @@ def page_regression():
                             help=hlp,
                         )
                         vals_map[col] = float(num)
-            btn_label = "Estimer le prix final"
+            btn_label = "Estimate final price"
             submitted = st.form_submit_button(btn_label, type="primary", use_container_width=True)
-        st.caption(
-            f"**Saisie manuelle** ({len(manual_cols)}) : "
-            + ", ".join(manual_cols[:14])
-            + (" …" if len(manual_cols) > 14 else "")
-        )
-        if any(_regr_benchmark_price_dropdown(c) for c in manual_cols):
-            st.caption(
-                "**Prix benchmark** (`benchmark_avg_price`) : **liste déroulante** (quantiles / valeurs typiques du DW). "
-                "Les autres champs affichés restent en saisie numérique libre."
-            )
-        if median_fill_cols:
-            st.caption(
-                f"**Fixés à la médiane DW** ({len(median_fill_cols)}) : "
-                + ", ".join(median_fill_cols[:12])
-                + (" …" if len(median_fill_cols) > 12 else "")
-            )
-        _n_id = len(features) - len(cols_form)
-        if _n_id > 0:
-            st.caption(
-                f"**Identifiants dimension ({_n_id})** : **médiane** du jeu pour l’inférence."
-            )
-        if missing_np:
-            st.caption("Colonnes absentes du parquet — valeurs par défaut : " + ", ".join(missing_np))
 
     if submitted:
         if pipe is None:
@@ -2609,7 +2711,7 @@ def page_regression():
             )
         else:
             vec = []
-            for c in features:
+            for c in Factors:
                 if c in missing_np:
                     vec.append(float(_default_missing(c, df_pq)))
                 elif _is_id_column(c):
@@ -2627,7 +2729,7 @@ def page_regression():
                 "n_median_autofill": len(median_fill_cols),
             }
 
-    fig_imp = fig_regression_importance_plot(pipe, features, accent=ac) if pipe is not None else None
+    fig_imp = fig_regression_importance_plot(pipe, Factors, accent=ac) if pipe is not None else None
 
     r = st.session_state.get("regr_ui_result")
     pred_show: float | None = float(r["pred"]) if r else None
@@ -2638,45 +2740,45 @@ def page_regression():
             st.markdown(
                 '<div class="ez-out-panel ez-out-panel--hint">'
                 '<p style="margin:0;font-size:1.05rem;line-height:1.55;color:#64748b;">'
-                "Renseignez les champs numériques à gauche puis cliquez sur "
-                f'<strong style="color:{html.escape(REGR_PAGE_ACCENT)};">Estimer le prix final</strong> '
+                "Fill in the numeric fields à gauche puis cliquez sur "
+                f'<strong style="color:{html.escape(REGR_PAGE_ACCENT)};">Estimate final price</strong> '
                 "pour afficher l’estimation et les graphiques.</p></div>",
                 unsafe_allow_html=True,
             )
         else:
             y_lab = REGR_TARGET_LABEL_FR.get(tgt, tgt)
             html_body = (
-                f"<p style='font-size:1.02rem;color:#64748b;margin:0 0 0.5rem 0;'>Cible : "
+                f"<p style='font-size:1.02rem;color:#64748b;margin:0 0 0.5rem 0;'>Goal : "
                 f"<strong>{html.escape(tgt)}</strong> ({html.escape(y_lab)})</p>"
                 f"<p style='font-size:1.65rem;margin:0;color:{REGR_PAGE_ACCENT};font-weight:800;'>"
                 f"Valeur estimée : {pred_show:,.4f}</p>"
             )
-            result_block("Lecture du modèle", html_body, variant="regr")
+            result_block("Reading du Prediction System", html_body, variant="regr")
             _nia = int(r.get("n_id_autofill") or 0)
             _nmed = int(r.get("n_median_autofill") or 0)
             if _nia > 0:
                 st.caption(
-                    f"{_nia} colonne(s) identifiant DW non affichées — médiane du jeu pour l’inférence."
+                    f"{_nia} colonne(s) identifiant database non affichées — médiane du jeu pour l’inférence."
                 )
             if _nmed > 0:
                 st.caption(
-                    f"{_nmed} prédicteur(s) non affichés — fixés à la **médiane du DW** pour compléter le vecteur du modèle."
+                    f"{_nmed} prédicteur(s) non affichés — fixés à la **médiane du database** pour compléter le vecteur du Prediction System."
                 )
-            if rm_t.get("rmse") is not None:
+            if rm_t.get("Prediction Error") is not None:
                 st.caption(
-                    f"Ordre de grandeur : RMSE test ≈ {float(rm_t['rmse']):.4f} (réf.) — prudence hors plage d’entraînement."
+                    f"Ordre de grandeur : Prediction Error test ≈ {float(rm_t['Prediction Error']):.4f} (réf.) — prudence hors plage d’Learning."
                 )
 
         fig_dist_pred = fig_regression_distribution_plot(df_pq, tgt, pred=pred_show, accent=ac)
         if fig_dist_pred is not None:
             st.plotly_chart(fig_dist_pred, use_container_width=True, key="regr_dist_fp")
         else:
-            st.caption("Histogramme indisponible — colonne `final_price` absente du jeu préparé.")
+            st.caption("Histogram unavailable — `final_price` column missing from prepared dataset.")
 
         if fig_imp is not None:
             st.plotly_chart(fig_imp, use_container_width=True, key="regr_imp_fp")
         else:
-            st.caption("Importances des variables non disponibles pour ce pipeline.")
+            st.caption("Importances des variables not available pour ce Prediction System.")
 
 
 def page_clustering():
@@ -2689,10 +2791,10 @@ def page_clustering():
     m = filter_clustering_metrics_if_models_missing(ML_MODELS, m)
     if loyalty_json_hint_run_script(ML_MODELS) and m.get("task") != "clustering_loyalty_rfm":
         st.warning(
-            "Des fichiers **JSON** fidélité sont présents, mais les **modèles `.joblib`** (K-Means, scaler, imputer) "
+            "Des fichiers **JSON** fidélité sont presents, mais les **models `.joblib`** (Customer Grouping, scaler, imputer) "
             "manquent dans `ML/models_artifacts/`. Tant qu’ils ne sont pas générés, l’interface reste sur la "
-            "segmentation **vue large** (montants / saisonnalité / catalogue). "
-            "Exécutez depuis la racine du projet : `python ML/scripts/run_01_clustering.py`."
+            "segmentation **broad view** (amounts / seasonality / catalog). "
+            "Execute depuis la racine du projet : `python ML/scripts/run_01_clustering.py`."
         )
 
     loyalty_modes: dict = m.get("modes") or {}
@@ -2707,27 +2809,27 @@ def page_clustering():
 
     hero_variant(
         "cluster",
-        "Fidélité — quel segment pour ce profil ?" if is_loyalty else "Segmentation — profils d’activité",
+        "Loyalty — which segment for this profile ?" if is_loyalty else "Segmentation — profils d’activity",
         (
-            "Indiquez **combien de réservations**, **quel volume d’affaires** et **à quelle récence** remonte la dernière activité : "
-            "nous rapprochons ce comportement d’un **groupe-type** (ex. très fidèle, occasionnel, à relancer)."
+            "Indiquez **how many bookings**, **quel volume d’affaires** et **how recent** was the last activity : "
+            "nous rapprochons ce comportement d’un **typical group** (ex. very loyal, occasional, to reactivate)."
             if is_loyalty
-            else "Décrivez une situation **comme dans nos tables de performance** : le modèle indique le **profil-type** le plus proche."
+            else "Décrivez une situation **comme dans nos tables de performance** : le Prediction System indique le **typical profile** le plus proche."
         ),
-        badges=("Critère E", "Test interactif"),
+        badges=("Criterion E", "Interactive test"),
     )
 
-    with st.expander("Comment utiliser cet écran", expanded=False):
+    with st.expander("How to use this screen", expanded=False):
         if is_loyalty:
             st.markdown(
                 "Comparez un **bénéficiaire** ou **prestataire** aux segments. "
-                "Champs : fréquence, volumes, CA cumulé, panier moyen, récence. "
-                "La note moyenne n'est pas encore intégrée au modèle."
+                "Fields: frequency, volumes, cumulative revenue, average basket, recency. "
+                "Average rating not yet integrated into Prediction System."
             )
         else:
             st.markdown(
-                "Testez à quel **segment** se rapproche un profil cohérent avec le DW. "
-                "Les champs correspondent aux variables numériques utilisées."
+                "Testez à quel **segment** se rapproche un profil consistent with the database. "
+                "Les fields correspondent aux variables numériques utilisées."
             )
 
     if loyalty_modes:
@@ -2736,24 +2838,24 @@ def page_clustering():
             opts = list(loyalty_modes.keys())
         _idx = opts.index(_default_mode) if _default_mode in opts else 0
         mode_key = st.radio(
-            "Profil à simuler",
+            "Profile to simulate",
             opts,
             index=_idx,
             format_func=lambda k: {
-                "beneficiary": "Bénéficiaires (réservations, CA, récence…)",
-                "provider": "Prestataires (charge, CA, récence…)",
+                "beneficiary": "Beneficiaries (bookings, CA, recency…)",
+                "provider": "Providers (load, revenue, recency…)",
             }.get(str(k), str(k)),
             horizontal=True,
             key="clustering_loyalty_scope",
         )
         mode_block = loyalty_modes.get(mode_key)
         if not mode_block:
-            st.error("Métriques manquantes pour ce périmètre.")
+            st.error("Metrics missing for this scope.")
             return
         km = load_joblib(ML_MODELS / mode_block["model_file"])
         if km is None:
             st.error(
-                f"Fichier modèle introuvable : `{mode_block.get('model_file')}`. "
+                f"Fichier Prediction System not found : `{mode_block.get('model_file')}`. "
                 "Régénérez les artefacts avec `python ML/scripts/run_01_clustering.py`."
             )
             return
@@ -2765,58 +2867,58 @@ def page_clustering():
         m_active = m
 
     deployment_context_card(
-        critere="E — Segmentation fidélité" if is_loyalty else "E — Segmentation",
-        cible=(
-            "Le segment le plus proche (parmi les groupes appris)"
+        critere="E — Loyalty segmentation" if is_loyalty else "E — Segmentation",
+        Goal=(
+            "The closest segment (among learned groups)"
             if is_loyalty
-            else f"L’un des {m.get('k', '?')} profils-type du modèle"
+            else f"L’un des {m.get('k', '?')} typical profiles of the Prediction System"
         ),
         objectif=(
-            "Comparer votre saisie aux profils **fidélité / RFM** et nommer le groupe le plus proche."
+            "Compare your input to profiles **loyalty / RFM** et name the closest group."
             if is_loyalty
-            else "Rapprocher un cas du profil-type le plus proche."
+            else "Match a case to the closest typical profile."
         ),
-        kpi="Aide au ciblage (offres, relances, priorisation)" if is_loyalty else "Lecture par segment",
-        modele=str(m.get("model_primary") or m.get("model") or "KMeans"),
-        pourquoi=champion_rationale(
+        kpi="Targeting assistance (offers, reactivation, prioritization)" if is_loyalty else "Reading by segment",
+        modele=str(m.get("model_primary") or m.get("Prediction System") or "KMeans"),
+        rationale=champion_rationale(
             m,
-            "Segments stables après normalisation des indicateurs."
+            "Stable segments after normalization indicators."
             if is_loyalty
-            else "Partitions lisibles pour regrouper des comportements proches.",
+            else "Readable partitions to group des similar behaviors.",
         ),
-        figure_note="Radar : votre profil comparé au centre du segment attribué.",
-        label_cible="Ce que vous obtenez",
-        label_kpi="Utilité",
-        label_figure="Graphique principal",
+        figure_note="Radar: your profile compared to center of assigned segment.",
+        label_cible="What you get",
+        label_kpi="Usefulness",
+        label_figure="Main chart",
     )
 
     section_header(
-        "Repères sur le modèle",
-        "Qualité globale avant de remplir le formulaire" if is_loyalty else "Quelques indicateurs avant simulation",
+        "Prediction System benchmarks",
+        "Quality globale before filling le formulaire" if is_loyalty else "Some indicators before simulation",
     )
     with st.container(border=True):
         c1, c2, c3, c4 = st.columns(4)
         with c1:
             st.metric("k (segments)", m_active.get("k", m.get("k", "—")))
         with c2:
-            sil = m_active.get("silhouette_holdout") or m_active.get("silhouette") or m.get("silhouette_holdout")
-            st.metric("Silhouette holdout", f"{sil:.4f}" if sil is not None else "—")
+            sil = m_active.get("silhouette_holdout") or m_active.get("Quality Score") or m.get("silhouette_holdout")
+            st.metric("Quality Score holdout", f"{sil:.4f}" if sil is not None else "—")
         with c3:
             st.metric(
-                "Échantillon (train / total)",
+                "Sample (train / total)",
                 f"{m_active.get('n_train', m.get('n_train', '?'))} / {m_active.get('n_samples', m.get('n_samples', '?'))}",
             )
         with c4:
             if is_loyalty:
-                st.metric("Lecture", "Fidélité RFM")
-                st.caption("Bénéficiaires & prestataires")
+                st.metric("Reading", "RFM Loyalty")
+                st.caption("Beneficiaries & providers")
             else:
                 kpi = str(m_active.get("kpi_alignment") or m.get("kpi_alignment", "—"))
-                st.metric("Périmètre", "✓" if kpi != "—" else "—")
-                st.caption("Modèle exploratoire DW")
+                st.metric("Scope", "✓" if kpi != "—" else "—")
+                st.caption("Exploratory database Prediction System")
 
     if km is None:
-        st.info("Modèle K-Means absent — métriques JSON uniquement.")
+        st.info("Customer Segmentation model missing — JSON metrics only.")
         return
 
     n_feat = getattr(km, "n_features_in_", None)
@@ -2826,7 +2928,7 @@ def page_clustering():
     )
 
     if cluster_short:
-        with st.expander("Aperçu des segments (rappel)", expanded=False):
+        with st.expander("Segment overview (reminder)", expanded=False):
             for i, title in enumerate(cluster_short):
                 blurb = (
                     cluster_metier[i]
@@ -2844,10 +2946,10 @@ def page_clustering():
                 st.markdown("")
 
     section_header(
-        "Formulaire — décrire le profil à tester",
-        "Même logique que la classification / régression : un champ par indicateur, puis validation."
+        "Form — describe the profile to test",
+        "Same logic as Booking Status / Price Estimation : one field per indicator, puis validation."
         if is_loyalty
-        else "Renseignez les valeurs attendues par le modèle, puis validez pour voir le segment et le graphique.",
+        else "Fill in expected values par le Prediction System, then validate to see segment and chart.",
     )
 
     if mode_block:
@@ -2864,8 +2966,8 @@ def page_clustering():
 
     if not _feat_order or not _imp or not _scl:
         st.warning(
-            "Pour prédire à partir de **coordonnées brutes**, il faut les fichiers scaler / imputer / K-Means / noms de "
-            "features — ré-exécutez **`python ML/scripts/run_01_clustering.py`** ou la **section 5** du notebook **01_E**."
+            "Pour prédire à partir de **coordata brutes**, il faut les fichiers scaler / imputer / Customer Grouping / noms de "
+            "Factors — ré-run **`python ML/scripts/run_01_clustering.py`** ou la **section 5** du notebook **01_E**."
         )
     else:
         _stats = getattr(_imp, "statistics_", None)
@@ -2887,19 +2989,19 @@ def page_clustering():
                 "<span style='font-size:0.82rem;text-transform:uppercase;letter-spacing:0.14em;color:"
                 + CLUSTER_PAGE_ACCENT
                 + ";font-weight:800;'>"
-                "Saisie du profil</span></div>",
+                "Profile input</span></div>",
                 unsafe_allow_html=True,
             )
-            st.markdown("##### Indicateurs à renseigner")
+            st.markdown("##### Metrics to fill in")
             st.caption(
-                "Les valeurs proposées correspondent aux **médianes** du jeu d’apprentissage — modifiez-les pour simuler un cas."
+                "Les valeurs proposées correspondent aux **médianes** du jeu d’apprentissage — modify them to simulate a case."
                 if is_loyalty
-                else "Valeurs par défaut ≈ médianes du jeu d’entraînement."
+                else "Valeurs par défaut ≈ médianes du jeu d’Learning."
             )
             with st.form("cluster_predict_raw_row"):
                 if is_loyalty:
                     _indices_main = ordered_feature_indices_for_form(list(_feat_order), loyalty=True)
-                    for grp in ("activité", "montants", "récence"):
+                    for grp in ("activity", "amounts", "recency"):
                         _ix_grp = [
                             i
                             for i in _indices_main
@@ -2929,8 +3031,8 @@ def page_clustering():
                                 key=f"cl_raw_f_{_ix}",
                             )
                 if _id_idx:
-                    with st.expander("Identifiants techniques (optionnel)", expanded=False):
-                        st.caption("Utile seulement si vous reproduisez une ligne complète du DW ; sinon laissez les défauts.")
+                    with st.expander("Technical identifiers (optional)", expanded=False):
+                        st.caption("Useful only if reproducing a complete database row; otherwise leave defaults.")
                         _cols_id = st.columns(min(2, max(1, len(_id_idx))))
                         for _j, _ix in enumerate(_id_idx):
                             with _cols_id[_j % len(_cols_id)]:
@@ -2941,7 +3043,7 @@ def page_clustering():
                                     key=f"cl_raw_f_{_ix}",
                                 )
                 _sub = st.form_submit_button(
-                    "Voir mon segment" if is_loyalty else "Voir le segment et le graphique",
+                    "View my segment" if is_loyalty else "View segment and chart",
                     type="primary",
                     use_container_width=True,
                 )
@@ -2952,7 +3054,7 @@ def page_clustering():
             try:
                 pred_id, z_vec, _xi = predict_cluster_from_raw_features(_vals_in, _imp, _scl, km)
             except Exception as _err:
-                st.error(f"Prédiction impossible (vérifiez le nombre de variables et les artefacts) : {_err}")
+                st.error(f"Prediction failed (check number of variables and artifacts): {_err}")
             else:
                 _name_s = cluster_short[pred_id] if 0 <= pred_id < len(cluster_short) else ""
                 _metier_s = (
@@ -2965,7 +3067,7 @@ def page_clustering():
                     if is_loyalty
                     else _name_s
                 )
-                _prof_display = _metier_s if _metier_s else "Synthèse métier à préciser pour ce segment."
+                _prof_display = _metier_s if _metier_s else "Synthèse business à préciser pour ce segment."
                 _shares = (m_active.get("cluster_share_train_sample") or m.get("cluster_share_train_sample")) or {}
                 _pct = _shares.get(str(pred_id))
                 _cc = np.asarray(km.cluster_centers_)
@@ -2985,14 +3087,14 @@ def page_clustering():
                         f"box-shadow:0 4px 20px rgba(15,23,42,0.07);"
                         f"border:1px solid rgba(234,88,12,0.28);'>"
                         f"<p style='margin:0;font-size:0.78rem;text-transform:uppercase;letter-spacing:0.1em;color:{CLUSTER_PAGE_ACCENT_DEEP};"
-                        f"font-weight:800;'>Segment attribué</p>"
+                        f"font-weight:800;'>Assigned segment</p>"
                         f"<p style='margin:0.45rem 0 0 0;font-size:1.75rem;font-weight:800;color:{CLUSTER_PAGE_ACCENT_DEEP};"
                         f"line-height:1.2;'>{html.escape(_title_card)}</p>"
                         f"<p style='margin:0.55rem 0 0 0;font-size:1.02rem;color:#334155;'>"
-                        f"{'Lecture' if _metier_s else 'À compléter côté projet'} : "
+                        f"{'Reading' if _metier_s else 'To be completed on project side'} : "
                         f"{html.escape(_prof_display.replace('**', ''))}</p>"
                         f"<p style='margin:0.75rem 0 0 0;font-size:0.95rem;color:#64748b;'>"
-                        f"Indice du segment : <code style='background:#fff7ed;color:{CLUSTER_PAGE_ACCENT_DEEP};padding:0.15rem 0.45rem;"
+                        f"Segment index : <code style='background:#fff7ed;color:{CLUSTER_PAGE_ACCENT_DEEP};padding:0.15rem 0.45rem;"
                         f"border-radius:6px;border:1px solid rgba(234,88,12,0.45);font-weight:700;'>{pred_id}</code></p></div>",
                         unsafe_allow_html=True,
                     )
@@ -3005,9 +3107,9 @@ def page_clustering():
                     )
                     if _pct is not None:
                         _n_samp = m_active.get("n_samples", m.get("n_samples", "?"))
-                        _unit_ech = "profils agrégés (fidélité)" if is_loyalty else "lignes"
+                        _unit_ech = "aggregated profiles (loyalty)" if is_loyalty else "rows"
                         st.info(
-                            f"Part approximative de ce segment dans l’échantillon d’apprentissage "
+                            f"Approximate share of this segment dans l’échantillon d’apprentissage "
                             f"(~{_n_samp} {_unit_ech}) : **{float(_pct) * 100:.1f} %**."
                         )
                 with cc_radar:
@@ -3016,7 +3118,7 @@ def page_clustering():
                         go.Scatterpolar(
                             r=np.concatenate([_zr, _zr[:1]]),
                             theta=_theta + [_theta[0]],
-                            name="Profil saisi",
+                            name="Entered profile",
                             line=dict(color=CLUSTER_PAGE_ACCENT_DEEP, width=3),
                             fillcolor="rgba(234, 88, 12, 0.18)",
                             fill="toself",
@@ -3026,7 +3128,7 @@ def page_clustering():
                         go.Scatterpolar(
                             r=np.concatenate([_ccr, _ccr[:1]]),
                             theta=_theta + [_theta[0]],
-                            name="Centre du segment (référence)",
+                            name="Segment center (reference)",
                             line=dict(color=BRAND["radar_ref"], width=2.5, dash="dash"),
                         )
                     )
@@ -3046,7 +3148,7 @@ def page_clustering():
                             ),
                         ),
                         title=dict(
-                            text="<b>Comparaison visuelle</b> — profil saisi vs profil-type du segment",
+                            text="<b>Visual comparison</b> — entered profile vs typical segment profile",
                             font=dict(size=19, color=CLUSTER_PAGE_ACCENT_DEEP, family="Segoe UI, system-ui, sans-serif"),
                             x=0.5,
                             xanchor="center",
@@ -3064,14 +3166,14 @@ def page_clustering():
                     )
                     st.plotly_chart(fig_r, use_container_width=True)
                     st.caption(
-                        "Chaque axe correspond à un indicateur du formulaire (échelle normalisée comme à l’entraînement)."
+                        "Each axis corresponds to an indicator du formulaire (normalized scale comme à l’Learning)."
                     )
 
-    _wrap_detail = st.expander("Indicateurs techniques & profils détaillés (optionnel)", expanded=not is_loyalty)
+    _wrap_detail = st.expander("Technical metrics & detailed profiles (optional)", expanded=not is_loyalty)
     with _wrap_detail:
         section_header(
-            "Comparatifs modèle",
-            "Pour aller plus loin que le formulaire ci-dessus",
+            "Prediction System comparisons",
+            "To go further than the form above",
         )
         col_a, col_b = st.columns((1, 1))
         with col_a:
@@ -3080,7 +3182,7 @@ def page_clustering():
             if dbk is not None and dba is not None:
                 fig_db = go.Figure(
                     go.Bar(
-                        x=["KMeans (champion)", "Agglomératif Ward"],
+                        x=["KMeans (Best System)", "Agglomératif Ward"],
                         y=[dbk, dba],
                         marker_color=[BRAND["deep"], BRAND["sky"]],
                         text=[f"{dbk:.2f}", f"{dba:.2f}"],
@@ -3089,9 +3191,9 @@ def page_clustering():
                 )
                 fig_db.update_layout(
                     **_plotly_layout(
-                        title=dict(text="Davies-Bouldin (↓ = clusters plus compacts / séparés)", font=dict(size=14, color=BRAND["deep"])),
+                        title=dict(text="Separation Score (↓ = more compact / separated clusters)", font=dict(size=14, color=BRAND["deep"])),
                         height=340,
-                        yaxis_title="Indice DB",
+                        yaxis_title="DB Index",
                         yaxis=dict(gridcolor=BRAND["chart_grid"]),
                     )
                 )
@@ -3099,7 +3201,7 @@ def page_clustering():
             elif dbk is not None:
                 fig_db = go.Figure(
                     go.Bar(
-                        x=["K-Means (fidélité)"],
+                        x=["Customer Grouping (loyalty)"],
                         y=[dbk],
                         marker_color=[BRAND["deep"]],
                         text=[f"{dbk:.2f}"],
@@ -3108,9 +3210,9 @@ def page_clustering():
                 )
                 fig_db.update_layout(
                     **_plotly_layout(
-                        title=dict(text="Davies-Bouldin — K-Means (↓ = mieux)", font=dict(size=14, color=BRAND["deep"])),
+                        title=dict(text="Separation Score — Customer Grouping (↓ = better)", font=dict(size=14, color=BRAND["deep"])),
                         height=340,
-                        yaxis_title="Indice DB",
+                        yaxis_title="DB Index",
                         yaxis=dict(gridcolor=BRAND["chart_grid"]),
                     )
                 )
@@ -3143,9 +3245,9 @@ def page_clustering():
                     **_plotly_layout(
                         title=dict(
                             text=(
-                                "Centres des clusters — variables RFM / fidélité (standardisées)"
+                                "Cluster centers — RFM variables / fidélité (standardisées)"
                                 if is_loyalty
-                                else "Centres des clusters — espace standardisé (dimensions = variables num. du périmètre perf.)"
+                                else "Cluster centers — standardized space (dimensions = numeric variables from perf. scope)"
                             ),
                             font=dict(size=15, color=BRAND["deep"]),
                         ),
@@ -3155,25 +3257,25 @@ def page_clustering():
                 )
                 st.plotly_chart(fig_hm, use_container_width=True)
             else:
-                st.info("Centres de clusters non disponibles dans ce fichier joblib.")
+                st.info("Cluster centers not available dans ce fichier joblib.")
 
     section_header(
-        "Répartition illustrative (simulation)",
-        "Distribution simulée pour visualiser la taille relative des segments (indicatif)",
+        "Illustrative distribution (simulation)",
+        "Simulated distribution to visualize la relative size of segments (indicatif)",
     )
     st.markdown('<div class="ez-panel">', unsafe_allow_html=True)
-    st.markdown("##### Répartition illustrative des segments")
+    st.markdown("##### Illustrative segment distribution")
     if is_loyalty:
         st.caption(
-            "Les **parts par segment** affichées plus haut proviennent de l’échantillon d’apprentissage. "
-            "La simulation aléatoire n’est pas calibrée sur l’espace RFM — désactivée en mode fidélité."
+            "Les **parts par segment** displayed above come from l’échantillon d’apprentissage. "
+            "La random simulation n’est pas calibrée sur l’espace RFM — disabled in loyalty mode."
         )
     else:
         st.caption(
-            "Simulation de **nombreuses** attributions dans l’espace d’entrée du KMeans (Gaussienne multivariée) — "
-            "donne une idée de la **taille relative** des segments, pas les volumes métier bruts."
+            "Simulation of **nombreuses** attributions dans l’espace d’entrée du KMeans (multivariate Gaussian) — "
+            "gives an idea de la **relative size** des segments, not raw business volumes."
         )
-    if not is_loyalty and st.button("Calculer la répartition simulée", type="primary", use_container_width=True) and n_feat:
+    if not is_loyalty and st.button("Calculate simulated distribution", type="primary", use_container_width=True) and n_feat:
         rng = np.random.default_rng(123)
         n_draw = 8000
         z = rng.standard_normal((n_draw, int(n_feat)))
@@ -3200,7 +3302,7 @@ def page_clustering():
             ]
         )
         fig_pie.update_layout(
-            title=dict(text="Illustration — répartition simulée des segments", font=dict(size=16, color=BRAND["deep"])),
+            title=dict(text="Illustration — simulated distribution des segments", font=dict(size=16, color=BRAND["deep"])),
             paper_bgcolor="rgba(0,0,0,0)",
             height=400,
             font=dict(color=BRAND["ink"]),
@@ -3215,9 +3317,9 @@ def page_timeseries():
     _inject_page_accent(*PAGE_ACCENT["ts"])
     hero_variant(
         "ts",
-        "S\u00e9ries temporelles \u2014 \u00e9volution & pr\u00e9vision",
-        "Visualisez **l\u2019\u00e9volution mensuelle** de vos indicateurs DW, **comparez Holt vs ARIMA** sur la validation, puis **projetez** la tendance sur les mois \u00e0 venir.",
-        badges=("Crit\u00e8re F", "Donn\u00e9es DW live"),
+        "Time Series \u2014 \u00e9volution & pr\u00e9vision",
+        "Visualisez **l\u2019\u00e9volution monthlyle** de vos database indicators, **compare Trend Analysis vs Advanced Forecast** sur la validation, puis **projetez** la trend sur les month \u00e0 venir.",
+        badges=("Criterion F", "Donn\u00e9es database live"),
     )
     m = load_json(ML_MODELS / "metrics_timeseries.json")
     if not m:
@@ -3225,17 +3327,17 @@ def page_timeseries():
         return
 
     _ser = str(m.get("series") or "\u2014")
-    _champion = str(m.get("champion_model") or "Holt")
-    _champion_short = "Holt" if "holt" in _champion.lower() else "ARIMA"
+    _champion = str(m.get("champion_model") or "Trend Analysis")
+    _champion_short = "Trend Analysis" if "Trend Analysis" in _champion.lower() else "Advanced Forecast"
 
     deployment_context_card(
-        critere="F \u2014 S\u00e9ries temporelles",
-        cible=f"Pr\u00e9vision mensuelle : {SERIES_COLUMN_LABELS_FR.get(_ser, _ser)}",
-        objectif="Suivre l\u2019\u00e9volution d\u2019un indicateur agr\u00e9g\u00e9 et anticiper les mois suivants.",
+        critere="F \u2014 Time Series",
+        Goal=f"Forecast monthlyle : {SERIES_COLUMN_LABELS_FR.get(_ser, _ser)}",
+        objectif="Suivre l\u2019\u00e9volution d\u2019un indicateur agr\u00e9g\u00e9 et anticipate les month suivants.",
         kpi=str(m.get("kpi_alignment") or "Pilotage volumes / CA / panier"),
         modele=_champion,
-        pourquoi=champion_rationale(m, "Mod\u00e8le retenu : RMSE le plus bas sur la validation (holdout 3 mois)."),
-        figure_note="Courbe : historique DW + pr\u00e9vision ; barres : comparaison Holt vs ARIMA.",
+        rationale=champion_rationale(m, "Mod\u00e8le selected : Prediction Error the lowest sur la validation (holdout 3 month)."),
+        figure_note="Courbe : historique database + pr\u00e9vision ; barres : comparison Trend Analysis vs Advanced Forecast.",
         label_cible="Indicateur pr\u00e9dit",
         label_kpi="Utilit\u00e9 m\u00e9tier",
         label_figure="Graphiques",
@@ -3246,7 +3348,7 @@ def page_timeseries():
 
     # --- Performance & stationnarit\u00e9 ---
     section_header(
-        "Qualit\u00e9 du mod\u00e8le champion",
+        "Quality du model Best System",
         "M\u00e9triques de validation, stationnarit\u00e9 et horizon document\u00e9",
     )
     tc = m.get("test_champion") or m.get("test_holt") or {}
@@ -3258,20 +3360,20 @@ def page_timeseries():
     with st.container(border=True):
         c1, c2, c3, c4, c5 = st.columns(5)
         with c1:
-            rms = tc.get("rmse")
-            st.metric("RMSE (champion)", f"{rms:.2f}" if rms is not None else "\u2014")
-            st.caption("Erreur quadratique moyenne")
+            rms = tc.get("Prediction Error")
+            st.metric("Prediction Error (Best System)", f"{rms:.2f}" if rms is not None else "\u2014")
+            st.caption("Root mean squared error")
         with c2:
-            mae = tc.get("mae")
-            st.metric("MAE", f"{mae:.2f}" if mae is not None else "\u2014")
-            st.caption("Erreur absolue moyenne")
+            mae_val = tc.get("Average Error")
+            st.metric("Average Error", f"{mae_val:.2f}" if mae_val is not None else "\u2014")
+            st.caption("Mean absolute error")
         with c3:
             mape = tc.get("mape")
             st.metric("MAPE", f"{mape:.2f} %" if mape is not None else "\u2014")
-            st.caption("\u00c9cart relatif moyen (%)")
+            st.caption("\u00c9cart relatif average (%)")
         with c4:
-            st.metric("Champion", _champion_short)
-            st.caption(f"Horizon : {m.get('horizon', '?')} mois")
+            st.metric("Best System", _champion_short)
+            st.caption(f"Horizon: {m.get('horizon', '?')} month")
         with c5:
             adf_p = m.get("adf_pvalue")
             if adf_p is not None and adf_p < 0.05:
@@ -3283,27 +3385,27 @@ def page_timeseries():
             else:
                 st.metric("Stationnarit\u00e9", "\u2014")
 
-    with st.expander(f"Série de référence : {SERIES_COLUMN_LABELS_FR.get(_ser, _ser)}", expanded=False):
+    with st.expander(f"Série de reference : {SERIES_COLUMN_LABELS_FR.get(_ser, _ser)}", expanded=False):
         _expl_txt = str(m.get("target_column_explained", "") or "")
         if _expl_txt:
             st.markdown(_expl_txt)
 
-    # --- Comparaison Holt vs ARIMA ---
+    # --- Comparaison Trend Analysis vs Advanced Forecast ---
     section_header(
-        "Comparaison Holt vs ARIMA",
-        "Erreurs sur la m\u00eame fen\u00eatre de validation \u2014 le plus bas est le meilleur",
+        "Comparaison Trend Analysis vs Advanced Forecast",
+        "Erreurs sur la m\u00eame fen\u00eatre de validation \u2014 the lowest est le meilleur",
     )
     col_chart, col_table = st.columns((1.2, 0.8))
     with col_chart:
         st.plotly_chart(fig_ts_compare(m), use_container_width=True)
     with col_table:
         _metric_rows = []
-        for label, d in (("Holt", th), ("ARIMA", ta)):
+        for label, d in (("Trend Analysis", th), ("Advanced Forecast", ta)):
             if d:
                 _metric_rows.append({
                     "Mod\u00e8le": label,
-                    "RMSE": round(d.get("rmse", 0), 2),
-                    "MAE": round(d.get("mae", 0), 2),
+                    "Prediction Error": round(d.get("Prediction Error", 0), 2),
+                    "Average Error": round(d.get("Average Error", 0), 2),
                     "MAPE (%)": round(d.get("mape", 0), 2),
                 })
         if _metric_rows:
@@ -3311,286 +3413,40 @@ def page_timeseries():
         delta = m.get("rmse_delta_holt_minus_arima")
         if delta is not None:
             st.info(
-                f"**\u00c9cart RMSE** (Holt \u2212 ARIMA) : **{delta:+.2f}** \u2014 "
-                + ("Holt est l\u00e9g\u00e8rement meilleur." if delta < 0 else "ARIMA est l\u00e9g\u00e8rement meilleur.")
+                f"**\u00c9cart Prediction Error** (Trend Analysis \u2212 Advanced Forecast) : **{delta:+.2f}** \u2014 "
+                + ("Trend Analysis est l\u00e9g\u00e8rement meilleur." if delta < 0 else "Advanced Forecast est l\u00e9g\u00e8rement meilleur.")
             )
         st.caption(
-            f"**Champion retenu** : {_champion_short} (r\u00e8gle : RMSE minimal sur le holdout de "
-            f"{m.get('horizon', '?')} mois)."
+            f"**Best System selected** : {_champion_short} (r\u00e8gle : Prediction Error minimal sur le holdout de "
+            f"{m.get('horizon', '?')} month)."
         )
 
-    # --- Connexion DW & donn\u00e9es ---
-    section_header(
-        "Donn\u00e9es du data warehouse",
-        "Connexion, rechargement des s\u00e9ries et visualisation interactive",
-    )
-    if "ts_cache_bust" not in st.session_state:
-        st.session_state.ts_cache_bust = 0
-
-    info = _dw_connection_info()
-    _dcol = PAGE_ACCENT["ts"][1]
-    st.markdown(
-        f'<div class="ez-card" style="border-top:3px solid {_dcol};">'
-        f"<div class=\"ez-kicker\">Acc\u00e8s au data warehouse</div>"
-        f"<p style='margin:0;color:#334155;font-size:1.02rem;line-height:1.6;'>"
-        f"<b>Serveur</b> : {html.escape(info['serveur'])} \u00b7 <b>Base</b> : {html.escape(info['base_dw'])}<br/>"
-        f"M\u00eame connexion que sous SSMS (Windows).</p></div>",
-        unsafe_allow_html=True,
-    )
-
-    b1, b2, b3 = st.columns([1, 1, 2])
-    with b1:
-        if st.button("Tester la connexion DW", use_container_width=True, key="ts_test_sql"):
-            ok, msg, df_test = test_dw_sql_connection()
-            if ok and df_test is not None:
-                st.success(msg)
-                st.dataframe(df_test, use_container_width=True)
-            else:
-                st.error(msg)
-    with b2:
-        if st.button("Recharger les s\u00e9ries depuis le DW", use_container_width=True, key="ts_reload"):
-            st.session_state.ts_cache_bust += 1
-            st.rerun()
-    with b3:
-        st.caption(
-            "\u00ab Tester \u00bb v\u00e9rifie la connexion ; \u00ab Recharger \u00bb actualise les donn\u00e9es mensuelles depuis le DW."
-        )
-
-    df_ts, ts_err = fetch_dw_timeseries_dataframe(int(st.session_state.ts_cache_bust))
-    if ts_err:
-        st.warning(f"**S\u00e9ries non charg\u00e9es** \u2014 {ts_err}")
-        st.caption(
-            "V\u00e9rifiez SQL Server, le pilote ODBC, ou lancez le script de test de connexion."
-        )
-    elif df_ts is not None and len(df_ts) > 0:
-        st.success(f"**Donn\u00e9es DW charg\u00e9es** \u2014 {len(df_ts)} mois d\u2019historique disponibles.")
-
-    if df_ts is not None and len(df_ts) > 0:
-        df_ts = df_ts.copy()
-        df_ts["date"] = pd.to_datetime(
-            dict(year=df_ts["cal_year"].astype(int), month=df_ts["cal_month"].astype(int), day=1)
-        )
-        available = [c for c in SERIES_COLUMN_LABELS_FR if c in df_ts.columns]
-        if available:
-            section_header(
-                "\u00c9volution & pr\u00e9vision interactive",
-                "Choisissez l\u2019indicateur, la fen\u00eatre d\u2019historique et l\u2019horizon de projection",
-            )
-            with st.container(border=True):
-                col = st.selectbox(
-                    "Indicateur \u00e0 suivre",
-                    available,
-                    format_func=lambda c: f"{SERIES_COLUMN_LABELS_FR[c]}",
-                    key="ts_target_col",
-                )
-                c1, c2, c3 = st.columns(3)
-                with c1:
-                    horizon = st.slider(
-                        "Mois de projection", 1, 12,
-                        int(m.get("horizon") or 3), key="ts_horizon",
-                    )
-                with c2:
-                    holdout_n = st.slider(
-                        "Mois de validation (holdout)", 1, min(6, max(1, len(df_ts) // 3)),
-                        min(int(m.get("horizon") or 3), max(1, len(df_ts) // 3)),
-                        key="ts_holdout",
-                    )
-                with c3:
-                    tail = st.slider(
-                        "Historique affich\u00e9 (mois)", 6,
-                        min(120, max(12, len(df_ts))),
-                        min(36, len(df_ts)), key="ts_tail",
-                    )
-
-            ts_full = df_ts.set_index("date")[col].astype(float).sort_index().dropna()
-            ts_plot = ts_full.iloc[-tail:]
-
-            if len(ts_full) >= 6:
-                import warnings as _w
-                _w.filterwarnings("ignore")
-                from statsmodels.tsa.holtwinters import ExponentialSmoothing
-                from statsmodels.tsa.arima.model import ARIMA as ARIMA_Model
-
-                ts_train = ts_full.iloc[:-holdout_n]
-                ts_test = ts_full.iloc[-holdout_n:]
-                h = len(ts_test)
-
-                holt_fit = ExponentialSmoothing(
-                    ts_train, trend="add", seasonal=None, initialization_method="estimated"
-                ).fit()
-                holt_fc_test = holt_fit.forecast(h)
-
-                try:
-                    arima_fit = ARIMA_Model(ts_train, order=(1, 1, 1)).fit()
-                except Exception:
-                    arima_fit = ARIMA_Model(ts_train, order=(0, 1, 1)).fit()
-                arima_fc_test = arima_fit.forecast(h)
-
-                holt_fit_full = ExponentialSmoothing(
-                    ts_full, trend="add", seasonal=None, initialization_method="estimated"
-                ).fit()
-                last_ts = pd.Timestamp(ts_full.index.max())
-                future = pd.date_range(last_ts + pd.DateOffset(months=1), periods=horizon, freq="MS")
-                holt_fc_future = holt_fit_full.forecast(horizon)
-
-                try:
-                    arima_fit_full = ARIMA_Model(ts_full, order=(1, 1, 1)).fit()
-                except Exception:
-                    arima_fit_full = ARIMA_Model(ts_full, order=(0, 1, 1)).fit()
-                arima_fc_future = arima_fit_full.forecast(horizon)
-
-                fig = go.Figure()
-                train_plot = ts_train[ts_train.index >= ts_plot.index.min()]
-                fig.add_trace(go.Scatter(
-                    x=train_plot.index, y=train_plot.values,
-                    mode="lines+markers", name="Train (historique)",
-                    line=dict(color=BRAND["deep"], width=2.2),
-                    marker=dict(size=5),
-                ))
-                fig.add_trace(go.Scatter(
-                    x=ts_test.index, y=ts_test.values,
-                    mode="lines+markers", name=f"Test \u2014 r\u00e9el ({h} mois)",
-                    line=dict(color="#f59e0b", width=2.5),
-                    marker=dict(size=7, symbol="circle"),
-                ))
-                fig.add_trace(go.Scatter(
-                    x=ts_test.index,
-                    y=np.asarray(holt_fc_test, dtype=float).ravel(),
-                    mode="lines+markers", name="Holt (validation)",
-                    line=dict(color=BRAND["sky"], width=2, dash="dot"),
-                    marker=dict(size=6, symbol="diamond"),
-                ))
-                fig.add_trace(go.Scatter(
-                    x=ts_test.index,
-                    y=np.asarray(arima_fc_test, dtype=float).ravel(),
-                    mode="lines+markers", name="ARIMA (validation)",
-                    line=dict(color="#a855f7", width=2, dash="dashdot"),
-                    marker=dict(size=6, symbol="square"),
-                ))
-                fig.add_trace(go.Scatter(
-                    x=future, y=np.asarray(holt_fc_future, dtype=float).ravel(),
-                    mode="lines+markers", name=f"Holt \u2014 pr\u00e9vision ({horizon} mois)",
-                    line=dict(color=BRAND["sky"], width=2, dash="dash"),
-                    marker=dict(size=7, symbol="diamond"),
-                ))
-                fig.add_trace(go.Scatter(
-                    x=future, y=np.asarray(arima_fc_future, dtype=float).ravel(),
-                    mode="lines+markers", name=f"ARIMA \u2014 pr\u00e9vision ({horizon} mois)",
-                    line=dict(color="#a855f7", width=2, dash="dash"),
-                    marker=dict(size=7, symbol="square"),
-                ))
-                lx = _plotly_x_datetime(last_ts)
-                fig.add_shape(
-                    type="line", x0=lx, x1=lx, yref="paper", y0=0, y1=1,
-                    line=dict(color="#94a3b8", width=1.5, dash="dot"),
-                )
-                fig.add_annotation(
-                    x=lx, xref="x", yref="paper", y=1,
-                    text="Fin historique", showarrow=False, yanchor="bottom",
-                    font=dict(size=11, color="#94a3b8"),
-                )
-                test_start = _plotly_x_datetime(pd.Timestamp(ts_test.index.min()))
-                fig.add_shape(
-                    type="line", x0=test_start, x1=test_start, yref="paper", y0=0, y1=1,
-                    line=dict(color="#f59e0b", width=1, dash="dot"),
-                )
-                fig.add_annotation(
-                    x=test_start, xref="x", yref="paper", y=0.95,
-                    text="D\u00e9but validation", showarrow=False, yanchor="top",
-                    font=dict(size=11, color="#f59e0b"),
-                )
-                fig.update_layout(
-                    **_plotly_layout(
-                        title=dict(
-                            text=f"{SERIES_COLUMN_LABELS_FR.get(col, col)} \u2014 train / validation / pr\u00e9vision",
-                            font=dict(size=18, color=BRAND["deep"]),
-                        ),
-                        height=520,
-                        yaxis_title="Valeur",
-                        xaxis_title="Mois",
-                        legend=dict(orientation="h", yanchor="bottom", y=1.02, font=dict(size=12)),
-                        hovermode="x unified",
-                        xaxis=dict(gridcolor="rgba(148, 163, 184, 0.15)"),
-                        yaxis=dict(gridcolor="rgba(148, 163, 184, 0.15)"),
-                    )
-                )
-                st.plotly_chart(fig, use_container_width=True)
-
-                def _ts_metrics(y_true, y_pred):
-                    e = np.asarray(y_true, dtype=float) - np.asarray(y_pred, dtype=float).ravel()
-                    rmse_v = float(np.sqrt(np.mean(e ** 2)))
-                    mae_v = float(np.mean(np.abs(e)))
-                    mape_v = float(np.mean(np.abs(e / (np.asarray(y_true, dtype=float) + 1e-9))) * 100)
-                    return {"RMSE": round(rmse_v, 2), "MAE": round(mae_v, 2), "MAPE (%)": round(mape_v, 2)}
-
-                mh = _ts_metrics(ts_test.values, holt_fc_test)
-                ma = _ts_metrics(ts_test.values, arima_fc_test)
-
-                section_header(
-                    "R\u00e9sultat de la validation interactive",
-                    f"Erreurs calcul\u00e9es sur les {h} mois de holdout s\u00e9lectionn\u00e9s",
-                )
-                rc1, rc2 = st.columns(2)
-                with rc1:
-                    with st.container(border=True):
-                        _is_holt_champ = mh["RMSE"] <= ma["RMSE"]
-                        _holt_badge = " \u2190 champion" if _is_holt_champ else ""
-                        st.markdown(f"**Holt (lissage exponentiel){_holt_badge}**")
-                        mc1, mc2, mc3 = st.columns(3)
-                        with mc1:
-                            st.metric("RMSE", mh["RMSE"])
-                        with mc2:
-                            st.metric("MAE", mh["MAE"])
-                        with mc3:
-                            st.metric("MAPE", f"{mh['MAPE (%)']} %")
-                with rc2:
-                    with st.container(border=True):
-                        _arima_badge = " \u2190 champion" if not _is_holt_champ else ""
-                        st.markdown(f"**ARIMA{_arima_badge}**")
-                        mc1, mc2, mc3 = st.columns(3)
-                        with mc1:
-                            st.metric("RMSE", ma["RMSE"])
-                        with mc2:
-                            st.metric("MAE", ma["MAE"])
-                        with mc3:
-                            st.metric("MAPE", f"{ma['MAPE (%)']} %")
-
-                with st.expander("Valeurs pr\u00e9vues (tableau)", expanded=False):
-                    fc_df = pd.DataFrame({
-                        "Mois": [d.strftime("%Y-%m") for d in future],
-                        "Holt": [round(float(v), 2) for v in np.asarray(holt_fc_future, dtype=float).ravel()],
-                        "ARIMA": [round(float(v), 2) for v in np.asarray(arima_fc_future, dtype=float).ravel()],
-                    })
-                    st.dataframe(fc_df.set_index("Mois"), use_container_width=True)
-                    st.caption(
-                        "Les pr\u00e9visions utilisent **tout l\u2019historique** (train + test) pour projeter les mois futurs."
-                    )
-            else:
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(
-                    x=ts_plot.index, y=ts_plot.values,
-                    mode="lines+markers", name="Historique (DW)",
-                    line=dict(color=BRAND["deep"], width=2.2),
-                ))
-                fig.update_layout(**_plotly_layout(
-                    title=dict(text=f"{SERIES_COLUMN_LABELS_FR.get(col, col)} \u2014 historique", font=dict(size=18, color=BRAND["deep"])),
-                    height=420, yaxis_title="Valeur", xaxis_title="Mois",
-                ))
-                st.plotly_chart(fig, use_container_width=True)
-                st.info("L\u2019historique est trop court (< 6 mois) pour ajuster les mod\u00e8les de pr\u00e9vision.")
-        else:
-            st.warning(
-                "Colonnes attendues absentes du r\u00e9sultat SQL \u2014 v\u00e9rifiez "
-                "`SQL_ML_TIME_SERIES_RESERVATIONS` dans `schema_eventzilla.py`."
-            )
 
 
 def main():
+    # ── Vérification d'authentification ─────────────────────────
+    # Si l'utilisateur n'est pas connecté → afficher l'écran de login
+    if not is_authenticated(st.session_state):
+        _render_login_screen()
+        st.stop()  # Arrêter l'exécution : rien d'autre ne s'affiche
+
+    # ── Utilisateur authentifié → navigation normale ─────────────
     page = sidebar_brand_and_nav()
+
+    # Vérification de sécurité : la page doit être dans les pages autorisées
+    role          = get_role(st.session_state)
+    allowed_pages = ROLE_PAGES.get(role, PAGE_ORDER)
+    if page not in allowed_pages:
+        st.warning(
+            f"⛔ La page **{page}** n'est pas accessible avec votre rôle "
+            f"(**{ROLE_LABELS.get(role, role)}**)."
+        )
+        st.stop()
+
+    # Dispatch vers la page sélectionnée
     if page == PAGE_HOME:
         page_home()
-    elif page == PAGE_RECAP:
-        page_recap()
+    
     elif page == PAGE_CLASSIF:
         page_classification()
     elif page == PAGE_REGR:
@@ -3599,6 +3455,8 @@ def main():
         page_clustering()
     elif page == PAGE_TS:
         page_timeseries()
+    elif page == PAGE_RECAP:
+        page_recap()
     else:
         page_home()
 
@@ -3606,7 +3464,7 @@ def main():
 
     st.sidebar.markdown("---")
     st.sidebar.caption(
-        "EventZilla ML Studio — données du DW, modèles dans ML/models_artifacts/."
+        "EventZilla ML Studio — data du database, models dans ML/models_artifacts/."
     )
 
 

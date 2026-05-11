@@ -1,0 +1,39 @@
+{
+  "task": "classification",
+  "criterion": "C",
+  "champion_model": "RandomForest",
+  "gridsearch_rf_best_params": {
+    "clf__max_depth": null,
+    "clf__n_estimators": 80
+  },
+  "gridsearch_lr_best_params": {
+    "clf__C": 0.1
+  },
+  "test_metrics_champion": {
+    "accuracy": 0.336,
+    "precision_weighted": 0.33505783637998204,
+    "recall_weighted": 0.336,
+    "f1_weighted": 0.33511945259042036,
+    "roc_auc": 0.5084364054517613
+  },
+  "test_metrics_rf": {
+    "accuracy": 0.336,
+    "precision_weighted": 0.33505783637998204,
+    "recall_weighted": 0.336,
+    "f1_weighted": 0.33511945259042036,
+    "roc_auc": 0.5084364054517613
+  },
+  "test_metrics_lr": {
+    "accuracy": 0.336,
+    "precision_weighted": 0.3349713436777814,
+    "recall_weighted": 0.336,
+    "f1_weighted": 0.3347418875684245,
+    "roc_auc": 0.5150296300910503
+  },
+  "classes": [
+    "cancelled",
+    "confirmed",
+    "pending"
+  ],
+  "kpi_alignment": "taux_acceptation_annulation_funnel_critere_C"
+}

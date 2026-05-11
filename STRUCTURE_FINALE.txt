@@ -1,0 +1,201 @@
+================================================================================
+                    📁 STRUCTURE FINALE DU PROJET
+================================================================================
+
+Après nettoyage, voici ce qui sera GARDÉ:
+
+================================================================================
+                        🎯 FICHIERS ESSENTIELS (Racine)
+================================================================================
+
+Scripts de Démarrage:
+  ✅ LANCER_PROJET.bat          - Lance tous les services
+  ✅ LANCER_PROJET.ps1           - Version PowerShell
+  ✅ REPARER_TOUT.py             - Répare et remplit MLflow
+  ✅ NETTOYER_PROJET.py          - Ce script de nettoyage
+
+Documentation:
+  ✅ README_FINAL.md             - Documentation complète
+  ✅ MONITORING_GUIDE_S13.md     - Guide monitoring S13
+  ✅ SOLUTION_FINALE_COMPLETE.txt - Instructions finales
+
+Configuration:
+  ✅ .env                        - Variables d'environnement
+  ✅ .gitignore                  - Git ignore
+  ✅ requirements.txt            - Dépendances Python
+  ✅ requirements_monitoring.txt - Dépendances monitoring
+
+Docker:
+  ✅ docker-compose.yml          - Services Docker
+  ✅ docker-compose-monitoring.yml - Services monitoring
+  ✅ Dockerfile.fastapi          - Image FastAPI
+  ✅ Dockerfile.mlflow           - Image MLflow
+
+Monitoring:
+  ✅ prometheus.yml              - Config Prometheus
+  ✅ prometheus_rules.yml        - Règles d'alerte
+  ✅ simulate_scenarios.py       - Simulations monitoring
+  ✅ automated_training_pipeline.py - Pipeline automatisé
+
+================================================================================
+                        📂 DOSSIERS ESSENTIELS
+================================================================================
+
+ML/ (Machine Learning)
+├── api/
+│   ├── main.py                 - API FastAPI principale
+│   ├── auth_sql.py             - Authentification
+│   ├── monitoring.py           - Module monitoring
+│   ├── mlflow_endpoints.py     - Endpoints MLflow
+│   └── mlflow_integration.py   - Intégration MLflow
+│
+├── models_artifacts/           - Modèles ML sauvegardés
+│   ├── *.joblib                - Modèles pickle
+│   └── *.json                  - Métadonnées
+│
+├── data_processed/             - Données traitées
+│   └── *.csv                   - Datasets
+│
+├── notebooks/                  - Notebooks Jupyter
+│   ├── 00_A_*.ipynb            - Préparation données
+│   ├── 02_C_*.ipynb            - Classification
+│   ├── 03_D_*.ipynb            - Régression
+│   ├── 04_E_*.ipynb            - Clustering
+│   └── 05_F_*.ipynb            - Séries temporelles
+│
+├── streamlit_app.py            - Application Streamlit
+└── auth_streamlit.py           - Auth Streamlit
+
+n8n/ (Workflows)
+├── workflow_finance.json       - Workflow Finance
+├── workflow_marketing.json     - Workflow Marketing
+├── workflow_crm.json           - Workflow CRM
+├── workflow_finance_mlflow_ultra_simple.json - Finance simplifié
+└── results/                    - Résultats workflows
+
+grafana/ (Dashboards)
+├── provisioning/
+│   ├── datasources/
+│   │   └── prometheus.yml      - Datasource Prometheus
+│   └── dashboards/
+│       └── dashboards.yml      - Config dashboards
+└── dashboards/
+    └── eventzilla_mlops_dashboard.json - Dashboard principal
+
+airflow/ (Orchestration)
+└── dags/
+    ├── dag_master_etl.py       - DAG ETL
+    ├── dag_master_sa.py        - DAG Sentiment Analysis
+    └── dag_master_global.py    - DAG Global
+
+mlruns/ (MLflow)
+└── [expériences et runs]       - Données MLflow
+
+mlartifacts/ (MLflow)
+└── [artifacts]                 - Artifacts MLflow
+
+================================================================================
+                        🗑️ CE QUI SERA SUPPRIMÉ
+================================================================================
+
+Documentation Redondante:
+  ❌ GUIDE_*.md (multiples guides)
+  ❌ SOLUTION_*.md (solutions multiples)
+  ❌ START_HERE*.txt (multiples)
+  ❌ INSTRUCTIONS_*.txt
+  ❌ FAITES_*.txt
+  ❌ LISEZ_*.txt
+  ❌ IMPORTER_*.md
+
+Scripts de Test Multiples:
+  ❌ test_*.py (sauf essentiels)
+  ❌ check_*.bat
+  ❌ start_monitoring*.bat (multiples versions)
+
+Fichiers Temporaires:
+  ❌ __pycache__/
+  ❌ *.pyc, *.pyo, *.pyd
+  ❌ .pytest_cache/
+  ❌ .ipynb_checkpoints/
+
+Logs:
+  ❌ *.log
+  ❌ logs/**/*.log
+
+Backups:
+  ❌ *.bak
+  ❌ *.backup
+  ❌ *.old
+
+Fichiers Système:
+  ❌ .DS_Store
+  ❌ Thumbs.db
+  ❌ desktop.ini
+
+================================================================================
+                        📊 STATISTIQUES ESTIMÉES
+================================================================================
+
+Avant nettoyage:
+  📁 ~150-200 fichiers
+  💾 ~500 MB
+
+Après nettoyage:
+  📁 ~80-100 fichiers essentiels
+  💾 ~300 MB
+
+Gain:
+  🗑️  ~50-100 fichiers supprimés
+  💾 ~200 MB libérés
+
+================================================================================
+                        ✅ AVANTAGES DU NETTOYAGE
+================================================================================
+
+1. 🎯 Clarté
+   - Structure claire et organisée
+   - Facile à naviguer
+   - Pas de fichiers redondants
+
+2. 📦 Légèreté
+   - Moins d'espace disque
+   - Plus rapide à copier/déplacer
+   - Meilleure performance
+
+3. 🔍 Maintenabilité
+   - Facile à comprendre
+   - Facile à maintenir
+   - Facile à partager
+
+4. 📚 Documentation
+   - Un seul README principal
+   - Un seul guide monitoring
+   - Pas de confusion
+
+================================================================================
+                        🚀 COMMENT NETTOYER
+================================================================================
+
+1. Lancez le script:
+   python NETTOYER_PROJET.py
+
+2. Vérifiez la liste des fichiers à supprimer
+
+3. Confirmez avec "oui"
+
+4. Le projet sera nettoyé automatiquement
+
+================================================================================
+                        ⚠️  IMPORTANT
+================================================================================
+
+- Cette opération est IRRÉVERSIBLE
+- Faites un backup si nécessaire
+- Tous les fichiers essentiels seront conservés
+- Seuls les fichiers redondants/temporaires seront supprimés
+
+================================================================================
+
+Prêt à nettoyer? Lancez: python NETTOYER_PROJET.py
+
+================================================================================

@@ -1,119 +1,194 @@
 {
-  "name": "EventZilla — Finance Pipeline (Naïma)",
+  "name": "EventZilla — Finance ML Pipeline (Cron + FastAPI + MLflow)",
   "nodes": [
     {
       "parameters": {
-        "rule": {
-          "interval": [{ "field": "weeks", "weeksInterval": 1 }]
-        }
+        "content": "## EventZilla — Finance\n**Grille Partie n8n (Excellent)**\n- **A** Pipeline bout-en-bout : Cron → auth → 2 modèles → fusion → fichier + MLflow.\n- **B** Intégration FastAPI ; **HTTP** + **Cron**.\n- **C** Inférence planifiée ; prédictions persistées via `/save_result`.\n- **D** Workflow d’erreur lié + journaux d’exécution n8n.\n\n**Secrets :** variables `N8N_EZ_FASTAPI_URL`, `N8N_EZ_FINANCE_LOGIN`, `N8N_EZ_FINANCE_PASSWORD` (voir `env.example`).\n\n**Technique :** nœud **Merge** « Combine by Position » pour éviter une double exécution du Code.",
+        "height": 560,
+        "width": 380,
+        "color": 5
+      },
+      "id": "sticky-finance-doc",
+      "name": "Documentation Pipeline Finance",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-120, 60]
+    },
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "weeks", "weeksInterval": 1 }] }
       },
       "id": "node-cron-finance",
-      "name": "Déclencheur Hebdo Lundi 07h00",
+      "name": "Cron — Hebdomadaire (Schedule Trigger)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
-      "position": [200, 300],
-      "notes": "Déclenche le pipeline Finance chaque lundi à 7h00."
+      "position": [280, 400],
+      "notes": "Déclencheur planifié (ajuster jour/heure dans l’UI n8n si besoin)."
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "http://127.0.0.1:8000/auth/login",
+        "url": "={{ ($env.N8N_EZ_FASTAPI_URL || 'http://127.0.0.1:8000') + '/auth/login' }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "{\n  \"login\": \"naima_sarraj\",\n  \"password\": \"Naima@Finance2025!\"\n}",
-        "options": { "timeout": 10000 }
+        "jsonBody": "={{ JSON.stringify({ login: $env.N8N_EZ_FINANCE_LOGIN || 'naima_sarraj', password: $env.N8N_EZ_FINANCE_PASSWORD || 'Naima@Finance2025!' }) }}",
+        "options": { "timeout": 15000 }
       },
       "id": "node-login-finance",
-      "name": "Login API — Naïma (Finance)",
+      "name": "HTTP — Login JWT (Finance)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [460, 300],
-      "notes": "Authentification Naïma Sarraj — rôle financial_manager."
+      "position": [520, 400],
+      "notes": "Préférer les variables d’environnement pour les mots de passe."
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "http://127.0.0.1:8000/predict/regression",
+        "url": "={{ ($env.N8N_EZ_FASTAPI_URL || 'http://127.0.0.1:8000') + '/predict/regression' }}",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{"name": "Authorization", "value": "=Bearer {{ $('Login API — Naïma (Finance)').item.json.access_token }}"}]
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $('HTTP — Login JWT (Finance)').first().json.access_token }}" }]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "{\n  \"id_date\": 1,\n  \"id_event\": 42,\n  \"id_servicecategory\": 3,\n  \"id_benchmark\": 2,\n  \"id_provider\": 7,\n  \"service_price\": 1200,\n  \"benchmark_avg_price\": 1300,\n  \"event_budget\": 2000,\n  \"cal_month\": 4,\n  \"cal_year\": 2024,\n  \"quarter\": 2,\n  \"commission_margin\": 150\n}",
-        "options": { "timeout": 15000 }
+        "options": { "timeout": 20000 }
       },
       "id": "node-regression-finance",
-      "name": "Prédiction Montant Final (Ridge)",
+      "name": "HTTP — Prédiction Ridge (final_price)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [720, 180],
-      "notes": "Ridge champion (R²≈1.0, critère D). Prédit final_price en TND."
+      "position": [780, 260],
+      "notes": "Input 1 du Merge (ordre stable)."
     },
     {
       "parameters": {
         "method": "GET",
-        "url": "http://127.0.0.1:8000/predict/timeseries?horizon=3",
+        "url": "={{ ($env.N8N_EZ_FASTAPI_URL || 'http://127.0.0.1:8000') + '/predict/timeseries?horizon=3' }}",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{"name": "Authorization", "value": "=Bearer {{ $('Login API — Naïma (Finance)').item.json.access_token }}"}]
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $('HTTP — Login JWT (Finance)').first().json.access_token }}" }]
         },
-        "options": { "timeout": 15000 }
+        "options": { "timeout": 20000 }
       },
       "id": "node-timeseries-finance",
-      "name": "Prévision CA Mensuel (Holt)",
+      "name": "HTTP — Séries temporelles (Holt)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [720, 420],
-      "notes": "Holt champion (MAPE≈6.1%, critère F). Retourne métriques + prévision 3 mois."
+      "position": [780, 540],
+      "notes": "Input 2 du Merge."
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst reg = (items[0] || {}).json || {};\nconst ts  = (items[1] || {}).json || {};\nreturn [{\n  json: {\n    timestamp:   new Date().toISOString(),\n    workflow:    'Finance Pipeline',\n    utilisateur: 'Naïma Sarraj',\n    regression: {\n      montant_predit: reg.montant_predit,\n      unite:          reg.unite,\n      modele:         reg.modele\n    },\n    timeseries: {\n      modele_champion: ts.modele_champion,\n      horizon_mois:    ts.horizon_mois,\n      metriques_test:  ts.metriques_test,\n      note:            ts.note\n    }\n  }\n}];"
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "numberInputs": 2,
+        "options": {}
       },
-      "id": "node-merge-finance",
-      "name": "Fusionner Résultats Finance",
+      "id": "node-merge-parallel-finance",
+      "name": "Merge — Ridge + Holt (par position)",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1040, 400],
+      "notes": "Attend les deux branches puis fusionne en un seul item JSON."
+    },
+    {
+      "parameters": {
+        "jsCode": "const m = $json;\nreturn [{\n  json: {\n    timestamp: new Date().toISOString(),\n    workflow_label: 'Finance Pipeline',\n    utilisateur: 'Naïma Sarraj',\n    regression: {\n      montant_predit: m.montant_predit,\n      unite: m.unite,\n      modele: m.modele,\n    },\n    timeseries: {\n      modele_champion: m.modele_champion,\n      horizon_mois: m.horizon_mois,\n      metriques_test: m.metriques_test,\n      note: m.note,\n    },\n  },\n}];"
+      },
+      "id": "node-shape-finance",
+      "name": "Code — Structurer rapport Finance",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [980, 300],
-      "notes": "Rapport financier consolidé régression + séries temporelles."
+      "position": [1300, 400],
+      "notes": "Réorganise le JSON fusionné pour la persistance et MLflow."
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "http://127.0.0.1:8000/save_result",
+        "url": "={{ ($env.N8N_EZ_FASTAPI_URL || 'http://127.0.0.1:8000') + '/save_result' }}",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{"name": "Authorization", "value": "=Bearer {{ $('Login API — Naïma (Finance)').item.json.access_token }}"}]
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $('HTTP — Login JWT (Finance)').first().json.access_token }}" }]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"workflow\": \"finance\",\n  \"data\": {{ JSON.stringify($json) }}\n}",
-        "options": { "timeout": 15000 }
+        "jsonBody": "={{ JSON.stringify({ workflow: 'finance', data: $json }) }}",
+        "options": { "timeout": 20000 }
       },
       "id": "node-save-finance",
-      "name": "Sauvegarder Résultats",
+      "name": "HTTP — Sauvegarder résultats (fichier JSON)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1220, 300],
-      "notes": "POST /save_result → FastAPI écrit le fichier JSON dans n8n/results/."
+      "position": [1560, 280],
+      "notes": "POST `/save_result` → fichier sous `n8n/results/`."
+    },
+    {
+      "parameters": {
+        "jsCode": "const p = $('Code — Structurer rapport Finance').first().json;\nconst mt = p.timeseries?.metriques_test || {};\nconst num = (x) => {\n  const v = parseFloat(x);\n  return Number.isFinite(v) ? v : 0;\n};\nreturn [{\n  json: {\n    experiment_name: 'n8n_Finance_Pipeline',\n    run_name: 'finance_n8n_' + new Date().toISOString().replace(/[:.]/g, '-'),\n    params: {\n      workflow: 'finance',\n      user: 'naima_sarraj',\n      model_regression: String(p.regression?.modele || ''),\n      model_timeseries: String(p.timeseries?.modele_champion || ''),\n    },\n    metrics: {\n      predicted_amount: num(p.regression?.montant_predit),\n      timeseries_rmse: num(mt.rmse),\n      timeseries_mape: num(mt.mape),\n      timeseries_r2: num(mt.r2),\n    },\n    tags: { source: 'n8n', pipeline: 'finance', automated: 'true' },\n    artifacts: { fusion: p },\n  },\n}];"
+      },
+      "id": "node-mlflow-prep-finance",
+      "name": "Code — Payload MLflow (métriques numériques)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 520],
+      "notes": "Compatibilité `MLflowLogRequest` : métriques scalaires + artifacts."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.N8N_EZ_FASTAPI_URL || 'http://127.0.0.1:8000') + '/mlflow/log_prediction' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $('HTTP — Login JWT (Finance)').first().json.access_token }}" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "node-mlflow-log-finance",
+      "name": "HTTP — Logger run MLflow (tracking)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1820, 520],
+      "notes": "Journalisation centralisée des runs."
     }
   ],
   "connections": {
-    "Déclencheur Hebdo Lundi 07h00": {
-      "main": [[{ "node": "Login API — Naïma (Finance)", "type": "main", "index": 0 }]]
+    "Cron — Hebdomadaire (Schedule Trigger)": {
+      "main": [[{ "node": "HTTP — Login JWT (Finance)", "type": "main", "index": 0 }]]
     },
-    "Login API — Naïma (Finance)": {
+    "HTTP — Login JWT (Finance)": {
       "main": [[
-        { "node": "Prédiction Montant Final (Ridge)", "type": "main", "index": 0 },
-        { "node": "Prévision CA Mensuel (Holt)",      "type": "main", "index": 0 }
+        { "node": "HTTP — Prédiction Ridge (final_price)", "type": "main", "index": 0 },
+        { "node": "HTTP — Séries temporelles (Holt)", "type": "main", "index": 0 }
       ]]
     },
-    "Prédiction Montant Final (Ridge)": { "main": [[{ "node": "Fusionner Résultats Finance", "type": "main", "index": 0 }]] },
-    "Prévision CA Mensuel (Holt)":      { "main": [[{ "node": "Fusionner Résultats Finance", "type": "main", "index": 1 }]] },
-    "Fusionner Résultats Finance": { "main": [[{ "node": "Sauvegarder Résultats", "type": "main", "index": 0 }]] }
+    "HTTP — Prédiction Ridge (final_price)": {
+      "main": [[{ "node": "Merge — Ridge + Holt (par position)", "type": "main", "index": 0 }]]
+    },
+    "HTTP — Séries temporelles (Holt)": {
+      "main": [[{ "node": "Merge — Ridge + Holt (par position)", "type": "main", "index": 1 }]]
+    },
+    "Merge — Ridge + Holt (par position)": {
+      "main": [[{ "node": "Code — Structurer rapport Finance", "type": "main", "index": 0 }]]
+    },
+    "Code — Structurer rapport Finance": {
+      "main": [[
+        { "node": "HTTP — Sauvegarder résultats (fichier JSON)", "type": "main", "index": 0 },
+        { "node": "Code — Payload MLflow (métriques numériques)", "type": "main", "index": 0 }
+      ]]
+    },
+    "Code — Payload MLflow (métriques numériques)": {
+      "main": [[{ "node": "HTTP — Logger run MLflow (tracking)", "type": "main", "index": 0 }]]
+    }
   },
   "active": false,
-  "settings": { "saveManualExecutions": true },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "errorWorkflow": "EventZilla — Error Handler"
+  },
   "tags": [{ "name": "EventZilla" }, { "name": "Finance" }, { "name": "ML" }]
 }

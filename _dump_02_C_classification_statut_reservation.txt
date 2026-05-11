@@ -1,0 +1,379 @@
+# Critère **C** — Classification supervisée : statut de réservation
+
+## Contenu attendu pour la validation
+**Deux modèles** (Random Forest vs régression logistique), **pipelines** + **GridSearchCV**, **validation croisée stratifiée**, métriques (**Accuracy, Precision, Recall, F1, ROC-AUC**), **matrice de confusion**, **ROC** (binaire), **importances** (RF) ; gestion du déséquilibre (`class_weight`).
+
+## Critère **C** — exigences couvertes
+
+| Exigence | Réalisation |
+|----------|-------------|
+| **≥ 2 modèles** | **Forêt aléatoire** (non linéaire, agrège des arbres ; `class_weight` pour déséquilibre) **vs** **régression logistique multinomiale** (linéaire en probit après *softmax* ; interprétabilité des coefficients). |
+| **Pipeline + tuning** | `Pipeline(StandardScaler → estimateur)` + **`GridSearchCV`** (`StratifiedKFold`, score `f1_weighted`). |
+| **Train/test + CV** | Holdout 25 % **stratifié** ; chaque modèle optimisé par **5-fold** sur le train. |
+| **Déséquilibre** | `class_weight="balanced"` sur les deux estimateurs. |
+| **Métriques** | Accuracy, **Precision / Recall / F1** (weighted), **ROC-AUC** (multiclasse *one-vs-rest*, moyenne pondérée). |
+| **Interprétation** | Matrice de confusion, **importance des variables** (RF), courbe **ROC** si **binaire**. |
+| **B — Compréhension** | RF : peu d’hypothèses de forme, risque de sur-apprentissage si peu de données ; LR : suppose une **frontière linéaire** dans l’espace transformé (après scaling). |
+
+Références : `ML/EventZilla_Dashboards_Improved.pdf`, `docs/eventzilla/EventZilla_Dashboards_KPIs_Objectifs.md`
+
+
+====CELL====
+
+## Objectifs métier (rappel)
+
+Le statut de réservation relie les KPI *taux d’acceptation*, *taux d’annulation*, entonnoir conversion — voir le PDF *Improved* et `EventZilla_Dashboards_KPIs_Objectifs.md`.
+
+
+====CELL====
+
+## Structure et figures
+
+| Section | Contenu | Figures |
+|---------|---------|---------|
+| Connexion DW | SSMS | — |
+| Données | `dw_financial_wide.parquet` ou SQL | — |
+| Cible / features | *y* = statut, split stratifié | — |
+| Modèles & validation | GridSearch RF/LR, métriques test | Confusion, ROC (binaire), importances RF |
+| Livrables | Pipeline champion, JSON | — |
+
+
+====CELL====
+
+## Connexion au Data Warehouse (SQL Server / SSMS)
+
+Les données ML proviennent du **même environnement** que sous **SSMS** : base **`DW_eventzella`** (ou `EVENTZILLA_SQL_DW`), via **SQLAlchemy** + **pyodbc**, authentification Windows.
+
+Exécuter la cellule ci-dessous **en premier** : serveur, base, extrait de chaîne de connexion, test `SELECT DB_NAME()` / `SERVERPROPERTY`.
+
+> Si le message indique une erreur : service SQL arrêté, driver ODBC manquant, ou mauvais nom de serveur — ajuster `EVENTZILLA_SQL_SERVER` / `EVENTZILLA_SQL_DW` ou l’URI `EVENTZILLA_SQL_URI` dans l’environnement (voir `ML/ml_paths.py`).
+
+
+====CELL====
+
+from pathlib import Path
+import sys
+REPO_ROOT = Path.cwd().resolve()
+while REPO_ROOT != REPO_ROOT.parent:
+    if (REPO_ROOT / "ML" / "ml_paths.py").is_file():
+        break
+    REPO_ROOT = REPO_ROOT.parent
+if not (REPO_ROOT / "ML" / "ml_paths.py").is_file():
+    raise FileNotFoundError("Ouvrez Jupyter depuis la racine du dépôt (dossier contenant ML/)")
+sys.path.insert(0, str(REPO_ROOT))
+
+# Connexion DW — diagnostic (même serveur / base que SSMS)
+from ML.ml_paths import (
+    DATABASE_DW,
+    SQL_SERVER,
+    SQL_DRIVER,
+    SQL_PORT,
+    build_windows_auth_uri,
+    get_sql_engine,
+    ml_sql_only,
+    read_dw_sql,
+    sql_engine_init_error,
+)
+
+print("=" * 62)
+print(" EVENTZILLA — Connexion DW (équivalent accès SSMS)")
+print("=" * 62)
+print("  Serveur SQL      :", SQL_SERVER + (":" + str(SQL_PORT) if SQL_PORT else ""))
+print("  Base DW cible    :", DATABASE_DW)
+print("  Driver ODBC      :", SQL_DRIVER)
+print("  Mode DW seul     :", ml_sql_only(), "(EVENTZILLA_ML_SQL_ONLY=1 → pas de Excel/CSV)")
+try:
+    _uri = build_windows_auth_uri()
+    print("  Chaîne (extrait) :", (_uri[:88] + "…") if len(_uri) > 88 else _uri)
+except Exception as _uerr:
+    print("  Chaîne URI       : erreur", _uerr)
+_eng = get_sql_engine()
+if _eng is not None:
+    try:
+        _chk = read_dw_sql(
+            "SELECT DB_NAME() AS base_active, CAST(SERVERPROPERTY('ServerName') AS NVARCHAR(128)) AS serveur",
+            _eng,
+        )
+        print("  Test SQL         : OK — même base que sous SSMS si base_active =", DATABASE_DW)
+        print(_chk.to_string(index=False))
+    except Exception as _qerr:
+        print("  Test SQL         : ÉCHEC —", _qerr)
+else:
+    print("  Engine           : ABSENT —", sql_engine_init_error() or "voir pip sqlalchemy pyodbc")
+print("=" * 62)
+
+
+====CELL====
+
+## Où apparaissent les figures (graphiques) ?
+
+Les **graphiques Matplotlib / Seaborn** s’affichent **sous la cellule** qui appelle `plt.show()` (rendu **inline** dans Jupyter / VS Code).
+
+| Problème | Piste |
+|----------|--------|
+| Aucune image | Exécuter les cellules **dans l’ordre** depuis le haut ; vérifier que la cellule avec `plt.show()` a bien été exécutée. |
+| Toujours vide | Ajouter une fois en tête de notebook : `%matplotlib inline` (déjà présent dans les notebooks avec figures). |
+
+**Liste des graphiques :** voir le tableau **Plan** dans ce notebook (chaque figure apparaît juste après la cellule qui la génère).
+
+
+====CELL====
+
+from pathlib import Path
+import sys
+REPO_ROOT = Path.cwd().resolve()
+while REPO_ROOT != REPO_ROOT.parent:
+    if (REPO_ROOT / "ML" / "ml_paths.py").is_file():
+        break
+    REPO_ROOT = REPO_ROOT.parent
+if not (REPO_ROOT / "ML" / "ml_paths.py").is_file():
+    raise FileNotFoundError("Ouvrez Jupyter depuis la racine du dépôt (dossier contenant ML/)")
+sys.path.insert(0, str(REPO_ROOT))
+
+%matplotlib inline
+import json
+import warnings
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import joblib
+from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
+from sklearn.metrics import ConfusionMatrixDisplay, RocCurveDisplay
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.pipeline import Pipeline
+
+from ML.csv_local_fallback import (
+    enrich_financial_wide_with_performance_reservation_status,
+    financial_wide_has_status_column,
+    load_reservation_dataframe,
+    resolve_classification_status_column,
+)
+from ML.ml_paths import ML_PROCESSED, ML_MODELS, ensure_processed_dirs, get_sql_engine, ml_sql_only, read_dw_sql
+from ML.schema_eventzilla import SQL_ML_FINANCIAL_WIDE, build_sql_ml_financial_wide
+
+warnings.filterwarnings("ignore")
+ensure_processed_dirs()
+ML_MODELS.mkdir(parents=True, exist_ok=True)
+print("[1] Classification critère C — RF vs LogisticRegression. ML_SQL_ONLY:", ml_sql_only())
+
+
+====CELL====
+
+pp = ML_PROCESSED / "dw_financial_wide.parquet"
+df = None
+if pp.is_file():
+    df = pd.read_parquet(pp)
+    print("[2] Source : dw_financial_wide.parquet")
+    if not financial_wide_has_status_column(df):
+        eng = get_sql_engine()
+        if eng is not None:
+            try:
+                q_fin = build_sql_ml_financial_wide(eng)
+                df_dw = read_dw_sql(q_fin, eng)
+                if financial_wide_has_status_column(df_dw):
+                    df = df_dw
+                    print("[2] Parquet sans statut — rechargement DW avec jointure DimReservation (``r.status`` → reservation_status).")
+                else:
+                    print("[2] Avertissement : requête rentabilité sans statut — essai pont Fact_Performance.")
+            except Exception as e:
+                print("[2] Rechargement DW pour ajouter le statut : échec —", e)
+else:
+    eng = get_sql_engine()
+    if eng is None:
+        if ml_sql_only():
+            raise RuntimeError("[2] Pas de parquet DW et pas de SQL (EVENTZILLA_ML_SQL_ONLY=1). Exécuter le critère A ou vérifier la connexion SSMS.")
+        df = load_reservation_dataframe()
+        print("[2] Source : Reservation (local, ML_SQL_ONLY=0)")
+    else:
+        try:
+            q_fin = build_sql_ml_financial_wide(eng)
+            df = read_dw_sql(q_fin, eng)
+            print("[2] Source : SQL DW (requête adaptée, jointures *_SK)")
+        except Exception as e:
+            print("[2] SQL dynamique indisponible, essai statique :", e)
+            try:
+                df = read_dw_sql(SQL_ML_FINANCIAL_WIDE, eng)
+                print("[2] Source : SQL DW (statique)")
+            except Exception as e2:
+                if ml_sql_only():
+                    raise RuntimeError("[2] DW inaccessible (dynamique + statique) : " + str(e2)) from e2
+                print("[2] SQL statique échoué, local :", e2)
+                df = load_reservation_dataframe()
+if df is None:
+    raise RuntimeError("[2] Aucun DataFrame chargé.")
+if not financial_wide_has_status_column(df):
+    _eng = get_sql_engine()
+    if _eng is not None:
+        df_try = enrich_financial_wide_with_performance_reservation_status(df, _eng)
+        if financial_wide_has_status_column(df_try):
+            df = df_try
+            print("[2] Pont Fact_Performance + DimReservation : ``reservation_status`` fusionné sur (id_date, id_event).")
+print("[2] Dimensions :", df.shape)
+
+
+====CELL====
+
+status_col = resolve_classification_status_column(df)
+y_raw = df[status_col].map(lambda x: "__missing__" if pd.isna(x) else str(x))
+num_cols = [c for c in df.select_dtypes(include=[np.number]).columns if c != "fact_finance_id"][:20]
+X_df = df[num_cols].fillna(df[num_cols].median(numeric_only=True))
+print("[3] Cible :", status_col, "| Classes :", y_raw.nunique())
+print("[3] Features numériques (max 20) :", list(X_df.columns))
+
+le = LabelEncoder()
+y = le.fit_transform(y_raw)
+strat = y if len(set(y)) > 1 else None
+Xtr, Xte, ytr, yte = train_test_split(
+    X_df.values, y, test_size=0.25, random_state=42, stratify=strat
+)
+print("[3] Train / test :", Xtr.shape[0], "/", Xte.shape[0])
+
+
+====CELL====
+
+### Comparaison des modèles, métriques et graphiques de validation
+
+**Graphiques :** matrice de confusion (champion), ROC si classification binaire, importances variables si RF. **Interprétation :** privilégier les métriques sur le **jeu test** et le **F1 pondéré** en cas de classes déséquilibrées.
+
+
+====CELL====
+
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+pipe_rf = Pipeline([
+    ("scale", StandardScaler()),
+    ("clf", RandomForestClassifier(random_state=42, class_weight="balanced")),
+])
+grid_rf = {
+    "clf__n_estimators": [80, 120],
+    "clf__max_depth": [None, 12],
+}
+gs_rf = GridSearchCV(pipe_rf, grid_rf, cv=cv, scoring="f1_weighted", n_jobs=-1)
+gs_rf.fit(Xtr, ytr)
+best_rf = gs_rf.best_estimator_
+pred_rf = best_rf.predict(Xte)
+proba_rf = best_rf.predict_proba(Xte)
+
+pipe_lr = Pipeline([
+    ("scale", StandardScaler()),
+    ("clf", LogisticRegression(random_state=42, max_iter=3000, class_weight="balanced")),
+])
+grid_lr = {"clf__C": [0.1, 1.0, 10.0]}
+gs_lr = GridSearchCV(pipe_lr, grid_lr, cv=cv, scoring="f1_weighted", n_jobs=-1)
+gs_lr.fit(Xtr, ytr)
+best_lr = gs_lr.best_estimator_
+pred_lr = best_lr.predict(Xte)
+proba_lr = best_lr.predict_proba(Xte)
+
+class_labels = [str(c) for c in le.classes_]
+
+
+def report_block(name, pred, proba):
+    acc = accuracy_score(yte, pred)
+    pr_w = precision_score(yte, pred, average="weighted", zero_division=0)
+    rc_w = recall_score(yte, pred, average="weighted", zero_division=0)
+    f1w = f1_score(yte, pred, average="weighted", zero_division=0)
+    if len(le.classes_) > 2:
+        auc = roc_auc_score(yte, proba, multi_class="ovr", average="weighted")
+    else:
+        auc = roc_auc_score(yte, proba[:, 1])
+    print(f"=== {name} (test) ===")
+    print(" Accuracy:", round(acc, 4), "| Precision w:", round(pr_w, 4), "| Recall w:", round(rc_w, 4), "| F1 w:", round(f1w, 4), "| ROC-AUC:", round(auc, 4))
+    print(classification_report(yte, pred, target_names=class_labels, zero_division=0))
+    return {"acc": acc, "pr": pr_w, "rc": rc_w, "f1": f1w, "auc": auc}
+
+
+m_rf = report_block("RandomForest (GridSearch)", pred_rf, proba_rf)
+m_lr = report_block("LogisticRegression (GridSearch)", pred_lr, proba_lr)
+
+if m_rf["f1"] >= m_lr["f1"]:
+    champion, champ_name = best_rf, "RandomForest"
+    pred_ch, proba_ch = pred_rf, proba_rf
+else:
+    champion, champ_name = best_lr, "LogisticRegression"
+    pred_ch, proba_ch = pred_lr, proba_lr
+print("[4] Champion (F1 pondéré test) :", champ_name)
+
+fig, ax = plt.subplots(1, 2, figsize=(11, 4))
+ConfusionMatrixDisplay.from_predictions(yte, pred_ch, display_labels=class_labels, ax=ax[0], xticks_rotation=45, colorbar=False)
+ax[0].set_title("Matrice de confusion — " + champ_name)
+if len(le.classes_) == 2:
+    RocCurveDisplay.from_predictions(yte, proba_ch[:, 1], ax=ax[1])
+    ax[1].set_title("ROC — " + champ_name)
+else:
+    ax[1].axis("off")
+    ax[1].text(0.1, 0.5, "ROC-AUC multiclasse (OvR weighted) déjà dans les métriques ;\ncourbes par classe optionnelles en extension.", fontsize=10)
+plt.tight_layout()
+plt.show()
+
+if champ_name == "RandomForest":
+    imp = champion.named_steps["clf"].feature_importances_
+    order = np.argsort(imp)[::-1][:15]
+    plt.figure(figsize=(8, 4))
+    plt.barh(np.array(X_df.columns)[order][::-1], imp[order][::-1])
+    plt.title("Importance des variables (RandomForest champion)")
+    plt.tight_layout()
+    plt.show()
+
+acc = float(accuracy_score(yte, pred_ch))
+f1 = float(f1_score(yte, pred_ch, average="weighted", zero_division=0))
+prec = float(precision_score(yte, pred_ch, average="weighted", zero_division=0))
+rec = float(recall_score(yte, pred_ch, average="weighted", zero_division=0))
+if len(le.classes_) > 2:
+    roc_auc = float(roc_auc_score(yte, proba_ch, multi_class="ovr", average="weighted"))
+else:
+    roc_auc = float(roc_auc_score(yte, proba_ch[:, 1]))
+
+
+====CELL====
+
+joblib.dump(champion, ML_MODELS / "classification_status_champion_pipeline.joblib")
+joblib.dump(le, ML_MODELS / "label_encoder_status.joblib")
+# Compat anciens scripts : dupliquer sous l’ancien nom si RF
+if champ_name == "RandomForest":
+    joblib.dump(champion, ML_MODELS / "rf_status_kpi_pipeline.joblib")
+
+(ML_MODELS / "metrics_classification.json").write_text(
+    json.dumps({
+        "task": "classification",
+        "criterion": "C",
+        "champion_model": champ_name,
+        "gridsearch_rf_best_params": gs_rf.best_params_,
+        "gridsearch_lr_best_params": gs_lr.best_params_,
+        "test_metrics_champion": {
+            "accuracy": acc,
+            "precision_weighted": prec,
+            "recall_weighted": rec,
+            "f1_weighted": f1,
+            "roc_auc": roc_auc,
+        },
+        "test_metrics_rf": {
+            "accuracy": float(m_rf["acc"]),
+            "precision_weighted": float(m_rf["pr"]),
+            "recall_weighted": float(m_rf["rc"]),
+            "f1_weighted": float(m_rf["f1"]),
+            "roc_auc": float(m_rf["auc"]),
+        },
+        "test_metrics_lr": {
+            "accuracy": float(m_lr["acc"]),
+            "precision_weighted": float(m_lr["pr"]),
+            "recall_weighted": float(m_lr["rc"]),
+            "f1_weighted": float(m_lr["f1"]),
+            "roc_auc": float(m_lr["auc"]),
+        },
+        "classes": class_labels,
+        "kpi_alignment": "taux_acceptation_annulation_funnel_critere_C",
+    }, indent=2),
+    encoding="utf-8",
+)
+print("[5] Pipelines + metrics_classification.json (comparaison 2 modèles + GridSearch).")

@@ -1,0 +1,50 @@
+# Dockerfile — FastAPI ML API (EventZilla S12)
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Dépendances système minimales
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Dépendances Python (sans pyodbc/pymssql qui nécessitent ODBC — optionnel en Docker)
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir \
+        scikit-learn \
+        numpy \
+        pandas \
+        joblib \
+        fastapi \
+        uvicorn \
+        python-multipart \
+        pydantic \
+        mlflow \
+        python-jose[cryptography] \
+        passlib[bcrypt] \
+        python-dotenv \
+        requests \
+        pyarrow \
+        statsmodels || true && \
+    pip install --no-cache-dir -r requirements.txt || true
+
+# Code application
+COPY ML/ ./ML/
+COPY n8n/ ./n8n/
+
+# Créer les dossiers nécessaires
+RUN mkdir -p ML/models_artifacts ML/data_processed n8n/results mlruns
+
+# Variables d'environnement par défaut
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=15s --timeout=5s --retries=5 \
+    CMD curl -f http://localhost:8000/ || exit 1
+
+CMD ["uvicorn", "ML.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

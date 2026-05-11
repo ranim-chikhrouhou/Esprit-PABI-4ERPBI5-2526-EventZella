@@ -1,0 +1,198 @@
+{
+  "name": "EventZilla — Finance ML Webhook (inférence à la demande)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Finance — Webhook\nComplète le workflow **Cron Finance** : même pipeline ML, mais déclenché par **POST** API.\n\n**URL test :** `http://localhost:5678/webhook-test/eventzilla-finance-trigger`\n**Prod :** `/webhook/eventzilla-finance-trigger`\n\nCorps JSON optionnel : champs régression (`id_event`, `service_price`, …). Les absents prennent les défauts démo.",
+        "height": 360,
+        "width": 380,
+        "color": 5
+      },
+      "id": "sticky-wh-fin",
+      "name": "Documentation Webhook Finance",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-100, 60]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "eventzilla-finance-trigger",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "node-wh-fin",
+      "name": "Webhook — Inférence Finance",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 380],
+      "webhookId": "eventzilla-finance-webhook",
+      "notes": "Rubric « événementielle » en complément du Cron."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.N8N_EZ_FASTAPI_URL || 'http://127.0.0.1:8000') + '/auth/login' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ login: $env.N8N_EZ_FINANCE_LOGIN || 'naima_sarraj', password: $env.N8N_EZ_FINANCE_PASSWORD || 'Naima@Finance2025!' }) }}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "node-login-wh-fin",
+      "name": "HTTP — Login JWT (Finance)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 380],
+      "notes": "Même auth que le workflow Cron Finance."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.N8N_EZ_FASTAPI_URL || 'http://127.0.0.1:8000') + '/predict/regression' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $('HTTP — Login JWT (Finance)').first().json.access_token }}" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify((() => { const j = $('Webhook — Inférence Finance').first().json; const b = j.body ?? j; return { id_date: b.id_date ?? 1, id_event: b.id_event ?? 42, id_servicecategory: b.id_servicecategory ?? 3, id_benchmark: b.id_benchmark ?? 2, id_provider: b.id_provider ?? 7, service_price: b.service_price ?? 1200, benchmark_avg_price: b.benchmark_avg_price ?? 1300, event_budget: b.event_budget ?? 2000, cal_month: b.cal_month ?? 4, cal_year: b.cal_year ?? 2024, quarter: b.quarter ?? 2, commission_margin: b.commission_margin ?? 150 }; })()) }}",
+        "options": { "timeout": 20000 }
+      },
+      "id": "node-reg-wh-fin",
+      "name": "HTTP — Prédiction Ridge (final_price)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [740, 260],
+      "notes": "Input 1 du Merge."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ ($env.N8N_EZ_FASTAPI_URL || 'http://127.0.0.1:8000') + '/predict/timeseries?horizon=3' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $('HTTP — Login JWT (Finance)').first().json.access_token }}" }]
+        },
+        "options": { "timeout": 20000 }
+      },
+      "id": "node-ts-wh-fin",
+      "name": "HTTP — Séries temporelles (Holt)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [740, 520],
+      "notes": "Input 2 du Merge."
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "numberInputs": 2,
+        "options": {}
+      },
+      "id": "node-merge-wh-fin",
+      "name": "Merge — Ridge + Holt",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1000, 380],
+      "notes": "Synchronisation des deux modèles."
+    },
+    {
+      "parameters": {
+        "jsCode": "const m = $json;\nreturn [{\n  json: {\n    timestamp: new Date().toISOString(),\n    workflow_label: 'Finance Pipeline (Webhook)',\n    utilisateur: 'Naïma Sarraj',\n    regression: {\n      montant_predit: m.montant_predit,\n      unite: m.unite,\n      modele: m.modele,\n    },\n    timeseries: {\n      modele_champion: m.modele_champion,\n      horizon_mois: m.horizon_mois,\n      metriques_test: m.metriques_test,\n      note: m.note,\n    },\n  },\n}];"
+      },
+      "id": "node-shape-wh-fin",
+      "name": "Code — Structurer rapport Finance",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1260, 380],
+      "notes": "Même schéma sortie que le workflow Cron."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.N8N_EZ_FASTAPI_URL || 'http://127.0.0.1:8000') + '/save_result' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $('HTTP — Login JWT (Finance)').first().json.access_token }}" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ workflow: 'finance', data: $json }) }}",
+        "options": { "timeout": 20000 }
+      },
+      "id": "node-save-wh-fin",
+      "name": "HTTP — Sauvegarder résultats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1520, 260],
+      "notes": "Écrit `finance_predictions_*.json`."
+    },
+    {
+      "parameters": {
+        "jsCode": "const p = $('Code — Structurer rapport Finance').first().json;\nconst mt = p.timeseries?.metriques_test || {};\nconst num = (x) => {\n  const v = parseFloat(x);\n  return Number.isFinite(v) ? v : 0;\n};\nreturn [{\n  json: {\n    experiment_name: 'n8n_Finance_Pipeline',\n    run_name: 'finance_webhook_' + new Date().toISOString().replace(/[:.]/g, '-'),\n    params: {\n      workflow: 'finance_webhook',\n      user: 'naima_sarraj',\n      model_regression: String(p.regression?.modele || ''),\n      model_timeseries: String(p.timeseries?.modele_champion || ''),\n    },\n    metrics: {\n      predicted_amount: num(p.regression?.montant_predit),\n      timeseries_rmse: num(mt.rmse),\n      timeseries_mape: num(mt.mape),\n      timeseries_r2: num(mt.r2),\n    },\n    tags: { source: 'n8n', pipeline: 'finance_webhook', automated: 'true' },\n    artifacts: { fusion: p },\n  },\n}];"
+      },
+      "id": "node-mlflow-prep-wh-fin",
+      "name": "Code — Payload MLflow",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1520, 500],
+      "notes": "Distinction run_name `finance_webhook_*`."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.N8N_EZ_FASTAPI_URL || 'http://127.0.0.1:8000') + '/mlflow/log_prediction' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $('HTTP — Login JWT (Finance)').first().json.access_token }}" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "node-mlflow-wh-fin",
+      "name": "HTTP — Logger MLflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 500],
+      "notes": "Tracking."
+    }
+  ],
+  "connections": {
+    "Webhook — Inférence Finance": {
+      "main": [[{ "node": "HTTP — Login JWT (Finance)", "type": "main", "index": 0 }]]
+    },
+    "HTTP — Login JWT (Finance)": {
+      "main": [[
+        { "node": "HTTP — Prédiction Ridge (final_price)", "type": "main", "index": 0 },
+        { "node": "HTTP — Séries temporelles (Holt)", "type": "main", "index": 0 }
+      ]]
+    },
+    "HTTP — Prédiction Ridge (final_price)": {
+      "main": [[{ "node": "Merge — Ridge + Holt", "type": "main", "index": 0 }]]
+    },
+    "HTTP — Séries temporelles (Holt)": {
+      "main": [[{ "node": "Merge — Ridge + Holt", "type": "main", "index": 1 }]]
+    },
+    "Merge — Ridge + Holt": {
+      "main": [[{ "node": "Code — Structurer rapport Finance", "type": "main", "index": 0 }]]
+    },
+    "Code — Structurer rapport Finance": {
+      "main": [[
+        { "node": "HTTP — Sauvegarder résultats", "type": "main", "index": 0 },
+        { "node": "Code — Payload MLflow", "type": "main", "index": 0 }
+      ]]
+    },
+    "Code — Payload MLflow": {
+      "main": [[{ "node": "HTTP — Logger MLflow", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "errorWorkflow": "EventZilla — Error Handler"
+  },
+  "tags": [{ "name": "EventZilla" }, { "name": "Finance" }, { "name": "Webhook" }]
+}

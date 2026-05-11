@@ -1,0 +1,53 @@
+{
+  "name": "EventZilla — Réentraînement ML hebdo (Execute Command)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Réentraînement — Bonus grille\n- **Cron** hebdomadaire.\n- **Execute Command** : `python run_pipeline_s12.py` dans le dossier `EVENTZILLA_REPO_ROOT`.\n- Échec Python → erreur n8n → workflow **EventZilla — Error Handler** → `/alert/email`.\n\n**Sécurité :** activer explicitement *Execute Command* sur votre instance n8n si nécessaire.\n\n**Linux/Mac :** remplacer la commande par `cd ... && python3 run_pipeline_s12.py`.",
+        "height": 400,
+        "width": 400,
+        "color": 3
+      },
+      "id": "sticky-retrain",
+      "name": "Documentation Réentraînement",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-120, 80]
+    },
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "weeks", "weeksInterval": 1 }] }
+      },
+      "id": "node-cron-retrain",
+      "name": "Cron — Réentraînement hebdomadaire",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [320, 380],
+      "notes": "Régler jour/heure dans l’UI."
+    },
+    {
+      "parameters": {
+        "executeOnce": true,
+        "command": "=cmd /c cd /d \"{{ $env.EVENTZILLA_REPO_ROOT || 'C:\\Users\\ASUS\\Desktop\\VER1\\PI BI NEW (2)\\PI BI NEW' }}\" && python run_pipeline_s12.py"
+      },
+      "id": "node-exec-retrain",
+      "name": "Execute Command — run_pipeline_s12.py",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [620, 380],
+      "notes": "Sortie visible dans l’exécution n8n (stdout/stderr)."
+    }
+  ],
+  "connections": {
+    "Cron — Réentraînement hebdomadaire": {
+      "main": [[{ "node": "Execute Command — run_pipeline_s12.py", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "errorWorkflow": "EventZilla — Error Handler"
+  },
+  "tags": [{ "name": "EventZilla" }, { "name": "ML" }, { "name": "Retraining" }]
+}

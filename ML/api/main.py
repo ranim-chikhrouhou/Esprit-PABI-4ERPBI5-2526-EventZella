@@ -2,8 +2,11 @@
 """
 EventZilla ML API — Point d'entrée FastAPI.
 
-Lancer :
-    python -m uvicorn ML.api.main:app --reload --port 8000
+Lancer (recommandé sous Windows — évite WinError 10022 avec reload) :
+    python run_fastapi.py
+
+Ou directement :
+    python -m uvicorn ML.api.main:app --host 127.0.0.1 --port 8000
 
 Documentation interactive :
     http://localhost:8000/docs
@@ -39,7 +42,17 @@ from ML.api.auth_sql import (
     get_current_user,
     require_role,
 )
+from ML.api.mlflow_endpoints import router as mlflow_router
 from ML.ml_paths import ML_MODELS
+
+# ── Monitoring (Week S13) ────────────────────────────────────────
+try:
+    from prometheus_fastapi_instrumentator import Instrumentator
+    from prometheus_client import make_asgi_app
+    MONITORING_ENABLED = True
+except ImportError:
+    MONITORING_ENABLED = False
+    print("[WARN] Monitoring dependencies not installed. Run: pip install -r requirements_monitoring.txt")
 
 # ── Application ──────────────────────────────────────────────────
 app = FastAPI(
@@ -47,9 +60,39 @@ app = FastAPI(
     description="API de prédiction ML — authentification via logins SQL Server (SSMS).",
     version="1.0.0",
 )
+
+# ── Enable Prometheus Monitoring ─────────────────────────────────
+if MONITORING_ENABLED:
+    # Instrument FastAPI with Prometheus metrics
+    instrumentator = Instrumentator(
+        should_group_status_codes=False,
+        should_ignore_untemplated=True,
+        should_respect_env_var=False,  # Always enable
+        should_instrument_requests_inprogress=True,
+        excluded_handlers=[],  # Don't exclude anything
+        inprogress_name="fastapi_inprogress",
+        inprogress_labels=True,
+    )
+    instrumentator.instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+    
+    print("[OK] Prometheus monitoring enabled: /metrics endpoint available (PUBLIC)")
+else:
+    print("[WARN] Prometheus monitoring disabled")
+
+# MLflow integration
+app.include_router(mlflow_router)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8501", "http://localhost:5678"],
+    allow_origins=[
+        "http://localhost:8501",
+        "http://localhost:8502",
+        "http://localhost:5678",
+        "http://127.0.0.1:8501",
+        "http://127.0.0.1:8502",
+        "http://127.0.0.1:5678",
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -176,27 +219,6 @@ class SegmentationInput(BaseModel):
         "avg_nb_visitors_loyalty": 85,
         "volume_reservations_site_loyalty": 5
     }}}
-
-
-# Endpoint minimal pour la validation S12 (/predict explicite)
-@app.post("/predict", tags=["Validation S12"])
-def predict(body: ClassificationInput):
-    """Prédiction de statut sans JWT, utilisée pour la recette de validation."""
-    model = _MODELS.get("classification")
-    if model is None:
-        raise HTTPException(503, "Modèle de classification non chargé.")
-
-    features = [
-        "id_date", "id_event", "id_servicecategory", "id_benchmark",
-        "id_provider", "final_price", "service_price",
-        "benchmark_avg_price", "event_budget", "cal_month", "cal_year", "quarter",
-    ]
-    df = pd.DataFrame([body.model_dump()])[features]
-    pred_encoded = int(model.predict(df)[0])
-
-    le = _MODELS.get("label_encoder_clf")
-    statut = str(le.inverse_transform([pred_encoded])[0]) if le is not None else str(pred_encoded)
-    return {"prediction": statut, "task": "classification", "endpoint": "/predict"}
 
 
 # ── AUTH ─────────────────────────────────────────────────────────
@@ -513,7 +535,7 @@ def save_result(req: SaveResultRequest, user: dict = Depends(get_current_user)):
 
 
 # ── MÉTRIQUES GLOBALES ───────────────────────────────────────────
-@app.get("/metrics", tags=["Métriques"])
+@app.get("/models/metrics", tags=["Métriques"])
 def get_metrics(user: dict = Depends(get_current_user)):
     """Retourne les métriques de tous les modèles champions."""
     return {

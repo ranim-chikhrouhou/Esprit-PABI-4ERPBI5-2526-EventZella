@@ -10,14 +10,23 @@ venv/
 *.tmp
 ~$*
 
-# IDE.idea/
+# IDE
+.idea/
 .vscode/
 *.egg-info/
 .eggs/
 
-# ML — sorties lourdes / régénérables (voir LISEZMOI_gitMachine.md)
+# ML — sorties lourdes / régénérables
 ML/processed/*.npy
 ML/processed/*.parquet
 ML/processed/*.csv
 ML/processed/*.png
 ML/models_artifacts/*.joblib
+
+# MLflow local (volumineux, régénérable)
+mlruns/
+mlartifacts/
+mlflow.db
+
+# Archives locales (souvent trop lourdes pour GitHub)
+*.zip

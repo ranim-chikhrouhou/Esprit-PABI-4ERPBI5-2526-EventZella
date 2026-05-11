@@ -1,122 +1,197 @@
 {
-  "name": "EventZilla — Marketing Pipeline (Ranim)",
+  "name": "EventZilla — Marketing ML Pipeline (Cron + FastAPI + MLflow)",
   "nodes": [
     {
       "parameters": {
-        "rule": {
-          "interval": [{ "field": "hours", "hoursInterval": 24 }]
-        }
+        "content": "## EventZilla — Marketing\n**Grille Partie n8n**\n- **Cron** quotidien + **HTTP** FastAPI.\n- Pipeline : login → **Segmentation** ∥ **Classification** → **Merge** (sync) → rapport → **save_result** + **MLflow**.\n- Variables : `N8N_EZ_MARKETING_LOGIN`, `N8N_EZ_MARKETING_PASSWORD`, `N8N_EZ_FASTAPI_URL`.",
+        "height": 380,
+        "width": 360,
+        "color": 4
+      },
+      "id": "sticky-mkt",
+      "name": "Documentation Marketing",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-100, 80]
+    },
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "hours", "hoursInterval": 24 }] }
       },
       "id": "node-cron-marketing",
-      "name": "Déclencheur Quotidien 08h00",
+      "name": "Cron — Quotidien (Schedule Trigger)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
-      "position": [200, 300],
-      "notes": "Déclenche le pipeline Marketing chaque jour à 8h00."
+      "position": [240, 380],
+      "notes": "Ajuster l’heure d’exécution dans l’UI (ex. 08:00)."
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "http://127.0.0.1:8000/auth/login",
+        "url": "={{ ($env.N8N_EZ_FASTAPI_URL || 'http://127.0.0.1:8000') + '/auth/login' }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "{\n  \"login\": \"ranim_chikhrouhou\",\n  \"password\": \"Ranim@Marketing2025!\"\n}",
-        "options": { "timeout": 10000 }
+        "jsonBody": "={{ JSON.stringify({ login: $env.N8N_EZ_MARKETING_LOGIN || 'ranim_chikhrouhou', password: $env.N8N_EZ_MARKETING_PASSWORD || 'Ranim@Marketing2025!' }) }}",
+        "options": { "timeout": 15000 }
       },
       "id": "node-login-marketing",
-      "name": "Login API — Ranim (Marketing)",
+      "name": "HTTP — Login JWT (Marketing)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [460, 300],
-      "notes": "Authentification via login SQL Server. Retourne un JWT token valable 8h."
+      "position": [480, 380],
+      "notes": "JWT pour les endpoints `/predict/*` marketing."
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "http://127.0.0.1:8000/predict/segmentation/beneficiaire",
+        "url": "={{ ($env.N8N_EZ_FASTAPI_URL || 'http://127.0.0.1:8000') + '/predict/segmentation/beneficiaire' }}",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{"name": "Authorization", "value": "=Bearer {{ $('Login API — Ranim (Marketing)').item.json.access_token }}"}]
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $('HTTP — Login JWT (Marketing)').first().json.access_token }}" }]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "{\n  \"nb_reservations_loyalty\": 12,\n  \"ca_total_loyalty\": 15000,\n  \"panier_moyen_loyalty\": 1250,\n  \"recency_days_loyalty\": 30,\n  \"avg_nb_visitors_loyalty\": 85,\n  \"volume_reservations_site_loyalty\": 5\n}",
-        "options": { "timeout": 15000 }
+        "options": { "timeout": 20000 }
       },
       "id": "node-segmentation-ben",
-      "name": "Segmentation Bénéficiaires",
+      "name": "HTTP — Segmentation fidélité (K-Means)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [720, 180],
-      "notes": "K-Means fidélité (critère E). Retourne segment_id + label métier."
+      "position": [740, 240],
+      "notes": "Branche 1 → Merge input 1."
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "http://127.0.0.1:8000/predict/classification",
+        "url": "={{ ($env.N8N_EZ_FASTAPI_URL || 'http://127.0.0.1:8000') + '/predict/classification' }}",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{"name": "Authorization", "value": "=Bearer {{ $('Login API — Ranim (Marketing)').item.json.access_token }}"}]
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $('HTTP — Login JWT (Marketing)').first().json.access_token }}" }]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "{\n  \"id_date\": 1,\n  \"id_event\": 42,\n  \"id_servicecategory\": 3,\n  \"id_benchmark\": 2,\n  \"id_provider\": 7,\n  \"final_price\": 1500,\n  \"service_price\": 1200,\n  \"benchmark_avg_price\": 1300,\n  \"event_budget\": 2000,\n  \"cal_month\": 4,\n  \"cal_year\": 2024,\n  \"quarter\": 2\n}",
-        "options": { "timeout": 15000 }
+        "options": { "timeout": 20000 }
       },
       "id": "node-classification-marketing",
-      "name": "Classification Statut Réservation",
+      "name": "HTTP — Classification statut (RF)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [720, 420],
-      "notes": "Random Forest (critère C). Prédit statut: confirmed / cancelled / pending."
+      "position": [740, 520],
+      "notes": "Branche 2 → Merge input 2."
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst seg  = (items[0] || {}).json || {};\nconst clas = (items[1] || {}).json || {};\nreturn [{\n  json: {\n    timestamp:      new Date().toISOString(),\n    workflow:       'Marketing Pipeline',\n    utilisateur:    'Ranim Chikhrouhou',\n    segmentation: {\n      segment_id:    seg.segment_id,\n      segment_label: seg.segment_label,\n      modele:        seg.modele\n    },\n    classification: {\n      statut_predit: clas.statut_predit,\n      probabilites:  clas.probabilites,\n      modele:        clas.modele\n    }\n  }\n}];"
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "numberInputs": 2,
+        "options": {}
       },
-      "id": "node-merge-marketing",
-      "name": "Fusionner Résultats",
+      "id": "node-merge-mkt",
+      "name": "Merge — Synchroniser Segmentation + Classification",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1000, 380],
+      "notes": "Une seule exécution aval ; le Code lit les nœuds HTTP nommés."
+    },
+    {
+      "parameters": {
+        "jsCode": "const seg = $('HTTP — Segmentation fidélité (K-Means)').first().json;\nconst clas = $('HTTP — Classification statut (RF)').first().json;\nreturn [{\n  json: {\n    timestamp: new Date().toISOString(),\n    workflow_label: 'Marketing Pipeline',\n    utilisateur: 'Ranim Chikhrouhou',\n    segmentation: {\n      segment_id: seg.segment_id,\n      segment_label: seg.segment_label,\n      modele: seg.modele,\n    },\n    classification: {\n      statut_predit: clas.statut_predit,\n      probabilites: clas.probabilites,\n      modele: clas.modele,\n    },\n  },\n}];"
+      },
+      "id": "node-shape-mkt",
+      "name": "Code — Rapport Marketing consolidé",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [980, 300],
-      "notes": "Fusionne segmentation + classification en un seul objet JSON structuré."
+      "position": [1260, 380],
+      "notes": "Évite les collisions de clés entre les deux réponses API."
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "http://127.0.0.1:8000/save_result",
+        "url": "={{ ($env.N8N_EZ_FASTAPI_URL || 'http://127.0.0.1:8000') + '/save_result' }}",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{"name": "Authorization", "value": "=Bearer {{ $('Login API — Ranim (Marketing)').item.json.access_token }}"}]
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $('HTTP — Login JWT (Marketing)').first().json.access_token }}" }]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"workflow\": \"marketing\",\n  \"data\": {{ JSON.stringify($json) }}\n}",
-        "options": { "timeout": 15000 }
+        "jsonBody": "={{ JSON.stringify({ workflow: 'marketing', data: $json }) }}",
+        "options": { "timeout": 20000 }
       },
-      "id": "node-save-marketing",
-      "name": "Sauvegarder Résultats",
+      "id": "node-save-mkt",
+      "name": "HTTP — Sauvegarder résultats (fichier JSON)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1220, 300],
-      "notes": "POST /save_result → FastAPI écrit le fichier JSON dans n8n/results/."
+      "position": [1520, 260],
+      "notes": "Persistance automatique `marketing_predictions_*.json`."
+    },
+    {
+      "parameters": {
+        "jsCode": "const p = $('Code — Rapport Marketing consolidé').first().json;\nconst probs = p.classification?.probabilites || {};\nconst vals = Object.values(probs).map(Number).filter(Number.isFinite);\nconst maxProb = vals.length ? Math.max(...vals) : 0;\nreturn [{\n  json: {\n    experiment_name: 'n8n_Marketing_Pipeline',\n    run_name: 'marketing_n8n_' + new Date().toISOString().replace(/[:.]/g, '-'),\n    params: {\n      workflow: 'marketing',\n      user: 'ranim_chikhrouhou',\n      model_segmentation: String(p.segmentation?.modele || ''),\n      model_classification: String(p.classification?.modele || ''),\n    },\n    metrics: {\n      segment_id: parseFloat(p.segmentation?.segment_id) || 0,\n      classification_max_probability: maxProb,\n    },\n    tags: { source: 'n8n', pipeline: 'marketing', automated: 'true' },\n    artifacts: { summary: p },\n  },\n}];"
+      },
+      "id": "node-mlflow-prep-mkt",
+      "name": "Code — Payload MLflow Marketing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1520, 500],
+      "notes": "Métriques scalaires pour MLflow."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.N8N_EZ_FASTAPI_URL || 'http://127.0.0.1:8000') + '/mlflow/log_prediction' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $('HTTP — Login JWT (Marketing)').first().json.access_token }}" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "node-mlflow-mkt",
+      "name": "HTTP — Logger MLflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 500],
+      "notes": "Tracking des runs marketing."
     }
   ],
   "connections": {
-    "Déclencheur Quotidien 08h00": {
-      "main": [[{ "node": "Login API — Ranim (Marketing)", "type": "main", "index": 0 }]]
+    "Cron — Quotidien (Schedule Trigger)": {
+      "main": [[{ "node": "HTTP — Login JWT (Marketing)", "type": "main", "index": 0 }]]
     },
-    "Login API — Ranim (Marketing)": {
+    "HTTP — Login JWT (Marketing)": {
       "main": [[
-        { "node": "Segmentation Bénéficiaires",        "type": "main", "index": 0 },
-        { "node": "Classification Statut Réservation", "type": "main", "index": 0 }
+        { "node": "HTTP — Segmentation fidélité (K-Means)", "type": "main", "index": 0 },
+        { "node": "HTTP — Classification statut (RF)", "type": "main", "index": 0 }
       ]]
     },
-    "Segmentation Bénéficiaires":        { "main": [[{ "node": "Fusionner Résultats", "type": "main", "index": 0 }]] },
-    "Classification Statut Réservation": { "main": [[{ "node": "Fusionner Résultats", "type": "main", "index": 1 }]] },
-    "Fusionner Résultats": { "main": [[{ "node": "Sauvegarder Résultats", "type": "main", "index": 0 }]] }
+    "HTTP — Segmentation fidélité (K-Means)": {
+      "main": [[{ "node": "Merge — Synchroniser Segmentation + Classification", "type": "main", "index": 0 }]]
+    },
+    "HTTP — Classification statut (RF)": {
+      "main": [[{ "node": "Merge — Synchroniser Segmentation + Classification", "type": "main", "index": 1 }]]
+    },
+    "Merge — Synchroniser Segmentation + Classification": {
+      "main": [[{ "node": "Code — Rapport Marketing consolidé", "type": "main", "index": 0 }]]
+    },
+    "Code — Rapport Marketing consolidé": {
+      "main": [[
+        { "node": "HTTP — Sauvegarder résultats (fichier JSON)", "type": "main", "index": 0 },
+        { "node": "Code — Payload MLflow Marketing", "type": "main", "index": 0 }
+      ]]
+    },
+    "Code — Payload MLflow Marketing": {
+      "main": [[{ "node": "HTTP — Logger MLflow", "type": "main", "index": 0 }]]
+    }
   },
   "active": false,
-  "settings": { "saveManualExecutions": true },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "errorWorkflow": "EventZilla — Error Handler"
+  },
   "tags": [{ "name": "EventZilla" }, { "name": "Marketing" }, { "name": "ML" }]
 }

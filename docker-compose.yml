@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+
+  # ── MLflow Tracking Server ──────────────────────────────────────────────
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    container_name: eventzella-mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/app/mlruns
+      - ./mlartifacts:/app/mlartifacts
+    networks:
+      - eventzella-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # ── FastAPI ML API ──────────────────────────────────────────────────────
+  fastapi:
+    build:
+      context: .
+      dockerfile: Dockerfile.fastapi
+    container_name: eventzella-fastapi
+    ports:
+      - "8000:8000"
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - EVENTZELLA_SQL_SERVER=${EVENTZELLA_SQL_SERVER:-localhost}
+      - EVENTZELLA_SQL_DW=${EVENTZELLA_SQL_DW:-DW_eventzella}
+      - EVENTZILLA_JWT_SECRET=${EVENTZILLA_JWT_SECRET:-eventzilla-jwt-secret-2025}
+    volumes:
+      - ./ML/models_artifacts:/app/ML/models_artifacts
+      - ./ML/data_processed:/app/ML/data_processed
+      - ./mlruns:/app/mlruns
+      - ./n8n/results:/app/n8n/results
+    networks:
+      - eventzella-network
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Streamlit Web App ────────────────────────────────────────────────────
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    container_name: eventzella-streamlit
+    ports:
+      - "8502:8502"
+    environment:
+      - EVENTZILLA_API_URL=http://fastapi:8000
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    volumes:
+      - ./ML:/app/ML
+    networks:
+      - eventzella-network
+    depends_on:
+      fastapi:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  eventzella-network:
+    driver: bridge

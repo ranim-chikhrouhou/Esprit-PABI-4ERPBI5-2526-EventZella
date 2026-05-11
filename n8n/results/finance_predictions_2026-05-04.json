@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-05-04T14:51:28.400Z",
+  "workflow": "Finance Pipeline",
+  "utilisateur": "Naïma Sarraj",
+  "regression": {
+    "montant_predit": 1353.24,
+    "unite": "TND",
+    "modele": "Ridge (champion critère D, R²≈1.0)"
+  },
+  "timeseries": {}
+}

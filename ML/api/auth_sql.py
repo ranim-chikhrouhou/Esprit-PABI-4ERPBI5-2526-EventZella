@@ -21,13 +21,14 @@ SECRET_KEY  = os.environ.get("EVENTZILLA_JWT_SECRET", "eventzilla-jwt-secret-202
 ALGORITHM   = "HS256"
 TOKEN_HOURS = 8
 
-_SQL_SERVER = os.environ.get("EVENTZILLA_SQL_SERVER", "ASUSRANIM")
+_SQL_SERVER = os.environ.get("EVENTZILLA_SQL_SERVER", "DESKTOP-DVMNP7K\\MSSQLSERVERS")
 _SQL_DB     = os.environ.get("EVENTZILLA_SQL_DW",     "DW_eventzella")
 _SQL_DRIVER = os.environ.get("EVENTZILLA_SQL_DRIVER", "ODBC Driver 17 for SQL Server")
 
 # Serveurs candidats testés en ordre (Windows Auth uniquement)
 _WIN_CANDIDATES: tuple[str, ...] = (
     _SQL_SERVER,
+    "DESKTOP-DVMNP7K\\MSSQLSERVERS",
     "localhost",
     "127.0.0.1",
 )
@@ -37,6 +38,28 @@ _FALLBACK_PASSWORDS: dict[str, str] = {
     "ranim_chikhrouhou": "Ranim@Marketing2025!",
     "naima_sarraj":      "Naima@Finance2025!",
     "anas_allam":        "Anas@CRM2025!",
+}
+
+# Profils de secours si SQL Server est inaccessible
+_FALLBACK_PROFILES: dict[str, dict] = {
+    "naima_sarraj": {
+        "login":     "naima_sarraj",
+        "role":      "financial_manager",
+        "full_name": "Naïma Sarraj",
+        "email":     "naima.sarraj@eventzella.tn",
+    },
+    "ranim_chikhrouhou": {
+        "login":     "ranim_chikhrouhou",
+        "role":      "marketing_manager",
+        "full_name": "Ranim Chikhrouhou",
+        "email":     "ranim.chikhrouhou@eventzella.tn",
+    },
+    "anas_allam": {
+        "login":     "anas_allam",
+        "role":      "crm_manager",
+        "full_name": "Anas Allam",
+        "email":     "anas.allam@eventzella.tn",
+    },
 }
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -55,9 +78,9 @@ def _win_auth_uri(server: str) -> str:
 # ── Windows Auth + AppUsers ──────────────────────────────────────
 def _get_user_from_db(login: str) -> dict | None:
     """Connexion Windows Auth → lire dbo.AppUsers. Retourne dict ou None."""
-    from sqlalchemy import create_engine, text
     for server in _WIN_CANDIDATES:
         try:
+            from sqlalchemy import create_engine, text
             eng = create_engine(
                 _win_auth_uri(server),
                 pool_pre_ping=False, pool_size=1, max_overflow=0,
@@ -113,8 +136,17 @@ def authenticate_sql_user(login: str, password: str) -> dict:
     if password != expected:
         raise HTTPException(status_code=401, detail="Mot de passe incorrect.")
 
-    # ── Étape 2 : lecture profil dans AppUsers ───────────────────
-    user = _get_user_from_db(login)
+    # ── Étape 2 : lecture profil dans AppUsers (ou profil local de secours) ─
+    user = None
+    try:
+        user = _get_user_from_db(login)
+    except Exception:
+        pass
+
+    if user is None:
+        # SQL Server inaccessible → profil local de secours (mode démonstration)
+        user = _FALLBACK_PROFILES.get(login)
+
     if user is None:
         raise HTTPException(
             status_code=503,

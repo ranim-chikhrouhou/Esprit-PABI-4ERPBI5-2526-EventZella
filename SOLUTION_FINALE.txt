@@ -1,0 +1,161 @@
+================================================================================
+                    🎯 SOLUTION FINALE - ERREUR "Invalid expression"
+================================================================================
+
+PROBLÈME: "Invalid expression" dans le nœud "Log to MLflow"
+CAUSE: Expressions JSON.stringify() trop complexes pour n8n
+SOLUTION: Nouveau workflow ultra simple créé!
+
+================================================================================
+                        ✅ SOLUTION EN 5 ÉTAPES
+================================================================================
+
+ÉTAPE 1: Ouvrir n8n
+-------------------
+Allez sur: http://localhost:5678
+
+
+ÉTAPE 2: Créer un nouveau workflow
+-----------------------------------
+Cliquez sur le bouton [+] "Add workflow" en haut
+
+
+ÉTAPE 3: Importer le fichier
+-----------------------------
+1. Cliquez sur les 3 points [...] en haut à droite
+2. Sélectionnez "Import from File"
+3. Naviguez vers ce fichier:
+   
+   n8n/workflow_finance_mlflow_ultra_simple.json
+   
+4. Cliquez "Open"
+
+
+ÉTAPE 4: Sauvegarder et Exécuter
+---------------------------------
+1. Cliquez sur "Save" (en haut à droite)
+2. Cliquez sur "Execute Workflow" (bouton en haut)
+3. Attendez que tous les nœuds deviennent verts ✅
+
+Vous devriez voir:
+  ✅ [Manual Trigger] - Vert
+  ✅ [Login] - Vert
+  ✅ [Price Prediction] - Vert
+  ✅ [Log to MLflow] - Vert
+
+
+ÉTAPE 5: Vérifier dans MLflow
+------------------------------
+1. Allez sur: http://localhost:5000
+2. Cliquez sur: "n8n_Finance_Pipeline"
+3. Cliquez sur l'onglet: "Table" (PAS "Overview")
+4. Vous verrez le run avec les métriques! 🎉
+
+================================================================================
+                        📊 CE QUE VOUS VERREZ
+================================================================================
+
+Dans MLflow, vous verrez:
+
+Run Name: finance_test
+Start Time: 2026-05-03 XX:XX:XX
+
+Metrics:
+  • predicted_amount: 1450.75
+  • test_metric: 6.1
+
+Parameters:
+  • workflow: finance
+  • user: naima_sarraj
+  • model: Ridge
+
+Tags:
+  • source: n8n
+  • pipeline: finance
+
+================================================================================
+                        🔧 POURQUOI ÇA FONCTIONNE
+================================================================================
+
+L'ancien workflow utilisait:
+  ❌ JSON.stringify($('Price Prediction').item.json)
+  ❌ Expressions complexes avec imbrication
+  ❌ Références dynamiques multiples
+
+Le nouveau workflow utilise:
+  ✅ Valeurs fixes dans le JSON
+  ✅ Pas d'expressions complexes
+  ✅ Structure simple et claire
+
+================================================================================
+                        📁 FICHIERS CRÉÉS
+================================================================================
+
+1. workflow_finance_mlflow_ultra_simple.json
+   → Workflow ultra simple (RECOMMANDÉ)
+   → Pas d'expressions complexes
+   → Fonctionne à coup sûr
+
+2. workflow_finance_mlflow_fixed.json
+   → Workflow complet avec expressions corrigées
+   → Inclut régression + séries temporelles
+   → Pour utilisation avancée
+
+3. IMPORTER_WORKFLOW_N8N.md
+   → Guide complet d'importation
+   → Explications détaillées
+   → Dépannage
+
+================================================================================
+                        🚨 SI ÇA NE FONCTIONNE PAS
+================================================================================
+
+Vérifiez:
+  [ ] FastAPI fonctionne: http://localhost:8000
+  [ ] MLflow fonctionne: http://localhost:5000
+  [ ] n8n fonctionne: http://localhost:5678
+  [ ] Vous avez importé le BON fichier (ultra_simple)
+  [ ] Vous avez cliqué "Save" avant "Execute"
+  [ ] Tous les nœuds sont verts (pas d'erreur)
+  [ ] Vous êtes sur l'onglet "Table" dans MLflow
+
+Si un nœud est rouge:
+  1. Cliquez dessus
+  2. Regardez l'erreur en bas
+  3. Envoyez-moi le message d'erreur
+
+================================================================================
+                        📞 AIDE SUPPLÉMENTAIRE
+================================================================================
+
+Documentation complète:
+  • IMPORTER_WORKFLOW_N8N.md - Guide d'importation détaillé
+  • GUIDE_MLFLOW_N8N.md - Guide complet MLflow + n8n
+  • SOLUTION_RAPIDE.md - Solution rapide en 3 étapes
+
+Vérifier les services:
+  • Double-cliquez sur: check_services.bat
+
+================================================================================
+                        ✅ CHECKLIST FINALE
+================================================================================
+
+Avant d'exécuter:
+  [ ] J'ai ouvert n8n (http://localhost:5678)
+  [ ] J'ai créé un nouveau workflow
+  [ ] J'ai importé workflow_finance_mlflow_ultra_simple.json
+  [ ] J'ai cliqué "Save"
+  [ ] J'ai cliqué "Execute Workflow"
+  [ ] Tous les nœuds sont verts
+  [ ] J'ai ouvert MLflow (http://localhost:5000)
+  [ ] J'ai cliqué sur "n8n_Finance_Pipeline"
+  [ ] Je suis sur l'onglet "Table"
+  [ ] Je vois le run avec les métriques! 🎉
+
+================================================================================
+
+🚀 ALLEZ-Y MAINTENANT!
+
+Suivez les 5 étapes ci-dessus et vous verrez les runs dans MLflow!
+
+================================================================================

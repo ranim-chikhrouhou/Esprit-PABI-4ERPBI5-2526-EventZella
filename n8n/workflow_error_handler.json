@@ -8,7 +8,7 @@
       "type": "n8n-nodes-base.errorTrigger",
       "typeVersion": 1,
       "position": [200, 300],
-      "notes": "Déclenché automatiquement quand un des 3 workflows échoue."
+      "notes": "Déclenché quand un workflow lié échoue (inférence, réentraînement, etc.)."
     },
     {
       "parameters": {
@@ -24,10 +24,10 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://127.0.0.1:8000/alert/error",
+        "url": "={{ ($env.N8N_EZ_FASTAPI_URL || 'http://127.0.0.1:8000') + '/alert/error' }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"workflow\":  \"{{ $json.workflow }}\",\n  \"node\":      \"{{ $json.node }}\",\n  \"message\":   \"{{ $json.message }}\",\n  \"timestamp\": \"{{ $json.timestamp }}\"\n}",
+        "jsonBody": "={{ JSON.stringify({ workflow: $json.workflow, node: $json.node, message: $json.message, timestamp: $json.timestamp }) }}",
         "options": { "timeout": 15000 }
       },
       "id": "node-alert-api",
@@ -43,6 +43,6 @@
     "Formater Erreur":{ "main": [[{ "node": "Alerte FastAPI (Email + Log)","type": "main", "index": 0 }]] }
   },
   "active": false,
-  "settings": { "saveManualExecutions": true },
+  "settings": { "executionOrder": "v1", "saveManualExecutions": true },
   "tags": [{ "name": "EventZilla" }, { "name": "Monitoring" }]
 }

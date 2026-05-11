@@ -1,0 +1,38 @@
+{
+  "columns": [
+    "fact_finance_id",
+    "id_date",
+    "id_event",
+    "id_servicecategory",
+    "id_benchmark",
+    "id_provider",
+    "final_price",
+    "service_price",
+    "benchmark_avg_price",
+    "event_budget",
+    "full_date",
+    "cal_month",
+    "cal_year",
+    "quarter",
+    "is_holiday",
+    "is_weekend"
+  ],
+  "lineage_per_column": {
+    "fact_finance_id": "[dbo].[Fact_RentabiliteFinanciere]",
+    "id_date": "[dbo].[Fact_RentabiliteFinanciere]",
+    "id_event": "[dbo].[Fact_RentabiliteFinanciere]",
+    "id_servicecategory": "[dbo].[Fact_RentabiliteFinanciere]",
+    "id_benchmark": "[dbo].[Fact_RentabiliteFinanciere]",
+    "id_provider": "[dbo].[Fact_RentabiliteFinanciere]",
+    "final_price": "[dbo].[Fact_RentabiliteFinanciere]",
+    "service_price": "[dbo].[Fact_RentabiliteFinanciere]",
+    "benchmark_avg_price": "[dbo].[Fact_RentabiliteFinanciere]",
+    "event_budget": "[dbo].[Fact_RentabiliteFinanciere]",
+    "full_date": "[dbo].[DimDate]",
+    "cal_month": "[dbo].[DimDate]",
+    "cal_year": "[dbo].[DimDate]",
+    "quarter": "[dbo].[DimDate]",
+    "is_holiday": "[dbo].[DimDate]",
+    "is_weekend": "[dbo].[DimDate]"
+  }
+}

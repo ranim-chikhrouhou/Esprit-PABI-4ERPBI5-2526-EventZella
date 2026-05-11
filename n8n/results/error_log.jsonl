@@ -12,3 +12,4 @@
 {"timestamp": "2026-04-19T19:54:24.455Z", "workflow": "Test Email depuis n8n", "node": "Simulation manuelle", "message": "Ceci est un test d'alerte email EventZilla"}
 {"timestamp": "2026-04-19T21:46:25.474Z", "workflow": "Test Email depuis n8n", "node": "Simulation manuelle", "message": "Ceci est un test d'alerte email EventZilla"}
 {"timestamp": "2026-04-20T09:02:59.858Z", "workflow": "Test Email depuis n8n", "node": "Simulation manuelle", "message": "Ceci est un test d'alerte email EventZilla"}
+{"timestamp": "2026-05-03T22:06:02.178Z", "workflow": "Example Workflow", "node": "Node With Error", "message": "Example Error Message"}

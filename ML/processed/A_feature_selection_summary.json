@@ -30,11 +30,11 @@
     ]
   },
   "embedded_lassocv": {
-    "alpha_chosen": 84.42446195431013,
+    "alpha_chosen": 15.81960277255999,
     "top_features_by_abs_coef": [
       [
         "final_price",
-        15735.178310605612
+        15803.783169787357
       ]
     ]
   }

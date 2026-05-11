@@ -1,0 +1,223 @@
+# Prometheus Alerting Rules for EventZilla MLOps
+# Week S13 - Alert Definitions
+
+groups:
+  - name: eventzilla_ml_alerts
+    interval: 15s
+    rules:
+      
+      # ═══════════════════════════════════════════════════════════
+      # HIGH LATENCY ALERTS
+      # ═══════════════════════════════════════════════════════════
+      
+      - alert: HighPredictionLatency
+        expr: |
+          histogram_quantile(0.95, 
+            rate(eventzilla_prediction_latency_seconds_bucket[1m])
+          ) > 1.0
+        for: 1m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High prediction latency detected"
+          description: "95th percentile latency is {{ $value }}s (threshold: 1.0s)"
+      
+      - alert: CriticalPredictionLatency
+        expr: |
+          histogram_quantile(0.95, 
+            rate(eventzilla_prediction_latency_seconds_bucket[1m])
+          ) > 5.0
+        for: 30s
+        labels:
+          severity: critical
+          category: performance
+        annotations:
+          summary: "CRITICAL: Very high prediction latency"
+          description: "95th percentile latency is {{ $value }}s (threshold: 5.0s)"
+      
+      # ═══════════════════════════════════════════════════════════
+      # ERROR RATE ALERTS
+      # ═══════════════════════════════════════════════════════════
+      
+      - alert: HighErrorRate
+        expr: |
+          (
+            rate(eventzilla_prediction_requests_total{status="error"}[5m])
+            /
+            rate(eventzilla_prediction_requests_total[5m])
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          category: reliability
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+      
+      - alert: CriticalErrorRate
+        expr: |
+          (
+            rate(eventzilla_prediction_requests_total{status="error"}[5m])
+            /
+            rate(eventzilla_prediction_requests_total[5m])
+          ) > 0.20
+        for: 1m
+        labels:
+          severity: critical
+          category: reliability
+        annotations:
+          summary: "CRITICAL: Very high error rate"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 20%)"
+      
+      # ═══════════════════════════════════════════════════════════
+      # MODEL PERFORMANCE ALERTS
+      # ═══════════════════════════════════════════════════════════
+      
+      - alert: ModelAccuracyDegradation
+        expr: |
+          eventzilla_model_accuracy < 0.80
+        for: 5m
+        labels:
+          severity: warning
+          category: model_health
+        annotations:
+          summary: "Model accuracy degradation detected"
+          description: "Model {{ $labels.model_type }} accuracy is {{ $value }} (baseline: 0.85)"
+      
+      - alert: CriticalModelAccuracyDrop
+        expr: |
+          eventzilla_model_accuracy < 0.70
+        for: 2m
+        labels:
+          severity: critical
+          category: model_health
+        annotations:
+          summary: "CRITICAL: Severe model accuracy drop"
+          description: "Model {{ $labels.model_type }} accuracy is {{ $value }} (baseline: 0.85)"
+      
+      - alert: LowModelConfidence
+        expr: |
+          eventzilla_model_confidence < 0.60
+        for: 5m
+        labels:
+          severity: warning
+          category: model_health
+        annotations:
+          summary: "Low model confidence detected"
+          description: "Model {{ $labels.model_type }} confidence is {{ $value }} (baseline: 0.75)"
+      
+      # ═══════════════════════════════════════════════════════════
+      # DRIFT DETECTION ALERTS
+      # ═══════════════════════════════════════════════════════════
+      
+      - alert: DataDriftDetected
+        expr: |
+          eventzilla_data_drift_detected == 1
+        for: 2m
+        labels:
+          severity: warning
+          category: data_quality
+        annotations:
+          summary: "Data drift detected"
+          description: "Feature {{ $labels.feature }} shows distribution drift"
+      
+      - alert: ModelDriftDetected
+        expr: |
+          eventzella_model_drift_detected == 1
+        for: 3m
+        labels:
+          severity: warning
+          category: model_health
+        annotations:
+          summary: "Model drift detected"
+          description: "Model {{ $labels.model_type }} performance has drifted from baseline"
+      
+      # ═══════════════════════════════════════════════════════════
+      # DATA QUALITY ALERTS
+      # ═══════════════════════════════════════════════════════════
+      
+      - alert: HighMissingValues
+        expr: |
+          eventzilla_data_missing_values_ratio > 0.15
+        for: 5m
+        labels:
+          severity: warning
+          category: data_quality
+        annotations:
+          summary: "High missing values ratio"
+          description: "Feature {{ $labels.feature }} has high missing values (>15%)"
+      
+      - alert: StaleData
+        expr: |
+          eventzilla_data_freshness_seconds > 3600
+        for: 5m
+        labels:
+          severity: warning
+          category: data_quality
+        annotations:
+          summary: "Stale data detected"
+          description: "Data hasn't been updated for {{ $value }}s (>1 hour)"
+      
+      # ═══════════════════════════════════════════════════════════
+      # SYSTEM RESOURCE ALERTS
+      # ═══════════════════════════════════════════════════════════
+      
+      - alert: HighCPUUsage
+        expr: |
+          eventzilla_system_cpu_usage_percent > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: system
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}% (threshold: 80%)"
+      
+      - alert: HighMemoryUsage
+        expr: |
+          eventzilla_system_memory_usage_percent > 85
+        for: 5m
+        labels:
+          severity: warning
+          category: system
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value }}% (threshold: 85%)"
+      
+      - alert: HighDiskUsage
+        expr: |
+          eventzilla_system_disk_usage_percent > 90
+        for: 10m
+        labels:
+          severity: critical
+          category: system
+        annotations:
+          summary: "High disk usage"
+          description: "Disk usage is {{ $value }}% (threshold: 90%)"
+      
+      # ═══════════════════════════════════════════════════════════
+      # TRAFFIC ALERTS
+      # ═══════════════════════════════════════════════════════════
+      
+      - alert: HighTrafficVolume
+        expr: |
+          rate(eventzilla_prediction_requests_total[1m]) > 100
+        for: 2m
+        labels:
+          severity: info
+          category: traffic
+        annotations:
+          summary: "High traffic volume"
+          description: "Request rate is {{ $value }} req/s (threshold: 100 req/s)"
+      
+      - alert: NoTraffic
+        expr: |
+          rate(eventzilla_prediction_requests_total[5m]) == 0
+        for: 10m
+        labels:
+          severity: warning
+          category: traffic
+        annotations:
+          summary: "No traffic detected"
+          description: "No requests received in the last 10 minutes"

@@ -3,11 +3,11 @@
 EventZilla -- Script de test complet des workflows n8n.
 
 Lancer depuis la racine du projet :
-    cd "c:/Users/ranim/Downloads/PI BI NEW"
+    cd "c:/Users/ASUS/OneDrive - ESPRIT/Pièces jointes/ML projetttt/DossierProjet/DossierProjet/PI BI NEW (2)/PI BI NEW"
     python n8n/test_workflows.py
 
 Prerequis :
-    1. FastAPI lancee  -> python -m uvicorn ML.api.main:app --reload --port 8000
+    1. FastAPI lancee  -> python run_fastapi.py   (ou: uvicorn ML.api.main:app --port 8000)
     2. n8n lance       -> npx n8n  (autre terminal)
     3. Workflows importes dans n8n
 """
@@ -197,7 +197,7 @@ if t_crm:
 # ETAPE 3 -- Declenchement webhook CRM
 # ════════════════════════════════════════════════════════════
 titre("ETAPE 3 -- Declenchement workflow CRM via Webhook n8n")
-info("Marketing et Finance : cliquer 'Execute Workflow' dans n8n.")
+info("Marketing / Finance (Cron) : executer manuellement dans n8n.")
 info("CRM : declenche par appel HTTP POST ci-dessous.")
 print()
 
@@ -228,7 +228,36 @@ else:
     print()
     print("  Verifiez :")
     print("  1. n8n est lance  (npx n8n)")
-    print("  2. Workflow CRM ouvert et bouton 'Execute Workflow' clique")
+    print("  2. Workflow CRM importe et webhook active")
+
+
+# ════════════════════════════════════════════════════════════
+# ETAPE 4 -- Webhook Finance (inférence à la demande)
+# ════════════════════════════════════════════════════════════
+titre("ETAPE 4 -- Declenchement webhook Finance")
+corps_fin_wh = {
+    "id_date": 1,
+    "id_event": 42,
+    "service_price": 1200,
+    "benchmark_avg_price": 1300,
+    "event_budget": 2000,
+}
+for url in [
+    f"{BASE_N8N}/webhook-test/eventzilla-finance-trigger",
+    f"{BASE_N8N}/webhook/eventzilla-finance-trigger",
+]:
+    try:
+        r = requests.post(url, json=corps_fin_wh, timeout=15)
+        if r.status_code == 200:
+            ok(f"Webhook Finance declenche : {url}")
+            ok(f"Reponse n8n : {r.text[:120]}")
+            break
+        else:
+            info(f"{url} -> HTTP {r.status_code}")
+    except Exception as e:
+        info(f"{url} -> {type(e).__name__}")
+else:
+    err("Webhook Finance inaccessible : importer workflow_webhook_finance.json et activer.")
 
 
 # ════════════════════════════════════════════════════════════

@@ -1,0 +1,36 @@
+{
+  "k": 4,
+  "method": "loyalty_rfm_kmeans",
+  "entity": "beneficiary",
+  "description_fr": "Segments fidélité (RFM simplifié) — libellés dérivés des centres K-Means.",
+  "segments": [
+    {
+      "cluster_id": 0,
+      "label_short": "Montants & prix sous la moyenne — Fidélité modérée ou récence élevée",
+      "label_long_plain": "Segment 0 — Montants & prix sous la moyenne — Fidélité modérée ou récence élevée",
+      "label_metier_fr": "Profil type **VIP** : volume et CA élevés, récence faible — prioriser offres exclusives et relation privilégiée.",
+      "share_train_sample": 0.6878923766816144
+    },
+    {
+      "cluster_id": 1,
+      "label_short": "Montants & prix au-dessus de la moyenne — Forte fidélité (fréquence / CA / récence favorable)",
+      "label_long_plain": "Segment 1 — Montants & prix au-dessus de la moyenne — Forte fidélité (fréquence / CA / récence favorable)",
+      "label_metier_fr": "**Fidèle** : fréquence régulière, valeur saine — programmes de fidélité et avantages récurrents.",
+      "share_train_sample": 0.030044843049327353
+    },
+    {
+      "cluster_id": 2,
+      "label_short": "Forte fidélité (fréquence / CA / récence favorable) — Montants & prix sous la moyenne",
+      "label_long_plain": "Segment 2 — Forte fidélité (fréquence / CA / récence favorable) — Montants & prix sous la moyenne",
+      "label_metier_fr": "**Occasionnel** : achats irréguliers ou panier modéré — campagnes de réactivation ciblées.",
+      "share_train_sample": 0.021524663677130046
+    },
+    {
+      "cluster_id": 3,
+      "label_short": "Forte fidélité (fréquence / CA / récence favorable) — Montants & prix au-dessus de la moyenne",
+      "label_long_plain": "Segment 3 — Forte fidélité (fréquence / CA / récence favorable) — Montants & prix au-dessus de la moyenne",
+      "label_metier_fr": "**À risque / inactif** : récence élevée ou faible engagement — offres de réactivation et enquêtes sortie.",
+      "share_train_sample": 0.26053811659192827
+    }
+  ]
+}
